@@ -32,50 +32,49 @@ async function loadMappings() {
   try {
     const mappings = await fetchJSONWithFallback("/mappings");
     const upcs = Object.keys(mappings || {}).reverse();
-
-    const items = [];
-
-    for (const upc of upcs) {
-      const productRes = await fetchJSONWithFallback(`/product?upc=${upc}`);
-      let p = {};
-      if (productRes && productRes.found && productRes.product) {
-        p = productRes.product;
-      } else {
-        const manual = mappings[upc];
-        if (manual && manual.data) {
-          p = manual.data;
+    
+    const productPromises = upcs.map(async (upc) => {
+      try {
+        const productRes = await fetchJSONWithFallback(`/product?upc=${upc}`);
+        let p = {};
+        if (productRes && productRes.found && productRes.product) {
+          p = productRes.product;
         } else {
-          continue;
+          const manual = mappings[upc];
+          if (manual && manual.data) {
+            p = manual.data;
+          } else {
+            return null; // Skip this item if no data found
+          }
         }
+        
+        const title = p.product_name || p.title || p.food_name || "Unknown";
+        const brand = p.brands || p.brand_name || "";
+        const desc = p.description || p.generic_name || "";
+        const img = (p.images && p.images.length && p.images[0]) || p.image || "";
+        
+        return {
+          UPC: upc,
+          TITLE: title,
+          BRAND: brand,
+          DESCRIPTION: desc,
+          IMAGES: img,
+          name: toTitleCase(title),
+          brand: brand,
+          description: desc,
+          productImg: img,
+        };
+      } catch (e) {
+        console.error(`Failed to load product for UPC ${upc}:`, e.message);
+        return null;
       }
-
-      const title = p.product_name || p.title || p.food_name || "Unknown";
-
-      const brand = p.brands || p.brand_name || "";
-
-      const desc = p.description || p.generic_name || "";
-
-      const img = (p.images && p.images.length && p.images[0]) || p.image || "";
-
-      items.push({
-        UPC: upc,
-        TITLE: title,
-        BRAND: brand,
-        DESCRIPTION: desc,
-        IMAGES: img,
-        name: toTitleCase(title),
-        brand: brand,
-        description: desc,
-        productImg: img,
-      });
-    }
-
-    items.sort((a, b) =>
+    });
+    
+    const items = (await Promise.all(productPromises)).filter(Boolean).sort((a, b) =>
       a.name.localeCompare(b.name, undefined, {
         sensitivity: "base",
       }),
     );
-
     allProducts = items;
     window.allProducts = allProducts;
     renderProducts(allProducts);
@@ -162,7 +161,7 @@ async function loadNutrition(item) {
       }
     }
 
-    alert("Nutrition data not found in FatSecret for this product. Please check the UPC or search by name.");
+    alert("Nutrition not found");
   } catch (err) {
     alert("Nutrition lookup failed: " + (err.message || "Check server"));
   }
@@ -233,35 +232,35 @@ function showNutritionPopup(food) {
       <div class="nutrition-row">
         <span>Total Fat</span>
         <span>
-          ${formatVal(serving?.fat, "g")}
+          ${formatVal(serving?.fat - ".00", "g")}
         </span>
       </div>
 
       <div class="nutrition-row">
         <span>Saturated Fat</span>
         <span>
-          ${formatVal(serving?.saturated_fat, "g")}
+          ${formatVal(serving?.saturated_fat - ".00", "g")}
         </span>
       </div>
 
       <div class="nutrition-row">
         <span>Carbohydrates</span>
         <span>
-          ${formatVal(serving?.carbohydrate, "g")}
+          ${formatVal(serving?.carbohydrate - ".00", "g")}
         </span>
       </div>
 
       <div class="nutrition-row">
         <span>Sugar</span>
         <span>
-          ${formatVal(serving?.sugar, "g")}
+          ${formatVal(serving?.sugar - ".00", "g")}
         </span>
       </div>
 
       <div class="nutrition-row">
         <span>Protein</span>
         <span>
-          ${formatVal(serving?.protein, "g")}
+          ${formatVal(serving?.protein - ".00", "g")}
         </span>
       </div>
 

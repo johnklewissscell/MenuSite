@@ -2,7 +2,9 @@
   const API_DEFAULT = "http://localhost:3000";
 
   async function fetchJSONWithFallback(path, opts) {
-    const urls = [API_DEFAULT + path, path];
+    const urls = window.MenuSiteApi?.getApiUrls
+      ? window.MenuSiteApi.getApiUrls(path)
+      : [API_DEFAULT + path, path];
     for (const u of urls) {
       try {
         const res = await fetch(u, opts);
