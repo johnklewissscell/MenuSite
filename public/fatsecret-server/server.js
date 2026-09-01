@@ -76,6 +76,28 @@ function saveFatSecretCache() {
   }
 }
 
+const externalRequestCooldowns = new Map();
+
+function getCooldownKey(source) {
+  return String(source || "unknown").toLowerCase();
+}
+
+function isExternalRequestRateLimited(source, cooldownMs = 60000) {
+  const key = getCooldownKey(source);
+  const until = externalRequestCooldowns.get(key);
+  if (!until) return false;
+  if (Date.now() > until) {
+    externalRequestCooldowns.delete(key);
+    return false;
+  }
+  return true;
+}
+
+function markExternalRequestRateLimited(source, cooldownMs = 60000) {
+  const key = getCooldownKey(source);
+  externalRequestCooldowns.set(key, Date.now() + cooldownMs);
+}
+
 function getCachedFatSecretAnswer(key) {
   if (!key) return null;
   const entry = fatSecretCache[key];
@@ -142,33 +164,77 @@ function parseValue(rawValue) {
   return Number.isFinite(numeric) ? numeric : null;
 }
 
+function decodeHtmlEntities(value) {
+  return String(value || "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">");
+}
+
+function stripHtml(value) {
+  return decodeHtmlEntities(value)
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function parseFatSecretPageHtml(html, productName = "", foodUrl = null) {
   const baseName = String(productName || "").trim() || "Unknown Product";
   const titleMatch = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
   const brandMatch = html.match(/<h2[^>]*class=["']manufacturer["'][^>]*>\s*(?:<a[^>]*>)?([^<]+)<\/a>\s*<\/h2>/i);
-  const parsedTitle = titleMatch?.[1]?.replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").trim() || baseName;
-  const parsedBrand = brandMatch?.[1]?.replace(/&amp;/g, "&").replace(/&nbsp;/g, " ").trim() || "";
-  const fetchFactValue = (labels) => {
+  const parsedTitle = decodeHtmlEntities(titleMatch?.[1]).trim() || baseName;
+  const parsedBrand = decodeHtmlEntities(brandMatch?.[1]).trim() || "";
+  const pageText = stripHtml(html);
+  const fetchFactValue = (labels, units = "(?:g|mg|mcg|IU|kcal|calories?)") => {
     const labelList = Array.isArray(labels) ? labels : [labels];
     for (const label of labelList) {
       const labelPattern = new RegExp(
-        `<div class="factTitle">${escapeRegExp(label)}<\\/div>\\s*<div class="factValue">([^<]+)<\\/div>`,
+        `<div class=["']factTitle["']>${escapeRegExp(label)}<\\/div>\\s*<div class=["']factValue["']>([^<]+)<\\/div>`,
         "i",
       );
       const match = html.match(labelPattern);
       if (match && match[1]) return match[1];
+
+      const rowPattern = new RegExp(
+        `<tr[^>]*>[\\s\\S]*?${escapeRegExp(label)}[\\s\\S]*?<\\/tr>`,
+        "i",
+      );
+      const rowMatch = html.match(rowPattern);
+      if (rowMatch) {
+        const rowText = stripHtml(rowMatch[0]);
+        const rowValueMatch = rowText.match(
+          new RegExp(`${escapeRegExp(label)}\\s*[:\\-]?\\s*([<>]?\\s*\\d[\\d,.]*(?:\\.\\d+)?\\s*${units})`, "i"),
+        );
+        if (rowValueMatch && rowValueMatch[1]) return rowValueMatch[1];
+      }
+
+      const textMatch = pageText.match(
+        new RegExp(`${escapeRegExp(label)}\\s*[:\\-]?\\s*([<>]?\\s*\\d[\\d,.]*(?:\\.\\d+)?\\s*${units})`, "i"),
+      );
+      if (textMatch && textMatch[1]) return textMatch[1];
     }
     return null;
   };
 
-  const calories = parseValue(fetchFactValue(["Calories"]));
+  const calories = parseValue(fetchFactValue(["Calories"], "(?:kcal|calories?)"));
   const fat = parseValue(fetchFactValue(["Fat"]));
   const carbohydrate = parseValue(fetchFactValue(["Carbs", "Carbohydrate", "Carbohydrates"]));
   const protein = parseValue(fetchFactValue(["Protein"]));
   const sodium = parseValue(fetchFactValue(["Sodium"]));
-  const sugar = parseValue(fetchFactValue(["Sugar"]));
-  const fiber = parseValue(fetchFactValue(["Fiber"]));
-  const saturatedFat = parseValue(fetchFactValue(["Saturated Fat"]));
+  const sugar = parseValue(fetchFactValue(["Sugar", "Sugars", "Total Sugars", "Total Sugar"]));
+  const fiber = parseValue(fetchFactValue(["Fiber", "Dietary Fiber"]));
+  const saturatedFat = parseValue(fetchFactValue(["Saturated Fat", "Sat Fat"]));
+  const transFat = parseValue(fetchFactValue(["Trans Fat"]));
+  const cholesterol = parseValue(fetchFactValue(["Cholesterol"]));
+  const potassium = parseValue(fetchFactValue(["Potassium"]));
+  const calcium = parseValue(fetchFactValue(["Calcium"]));
+  const iron = parseValue(fetchFactValue(["Iron"]));
+  const vitaminD = parseValue(fetchFactValue(["Vitamin D"]));
 
   const servingMatch = html.match(/There are\s+<b>(\d+)\s+calories<\/b>\s+in\s+([^<.]+?)(?:\s+of\s+.+)?\./i);
   const servingDescription = servingMatch?.[2]
@@ -192,11 +258,17 @@ function parseFatSecretPageHtml(html, productName = "", foodUrl = null) {
           calories: calories ?? 0,
           fat: fat ?? 0,
           saturated_fat: saturatedFat ?? 0,
+          trans_fat: transFat ?? undefined,
           carbohydrate: carbohydrate ?? 0,
           sugar: sugar ?? 0,
           protein: protein ?? 0,
           sodium: sodium ?? 0,
           fiber: fiber ?? 0,
+          cholesterol: cholesterol ?? undefined,
+          potassium: potassium ?? undefined,
+          calcium: calcium ?? undefined,
+          iron: iron ?? undefined,
+          vitamin_d: vitaminD ?? undefined,
           is_default: "1",
         },
       ],
@@ -450,6 +522,15 @@ async function searchFatSecretNutrition(query) {
 
 async function lookupOpenFoodFacts(upc) {
   try {
+    if (isExternalRequestRateLimited("openfoodfacts")) {
+      return {
+        found: false,
+        source: "OpenFoodFacts",
+        data: null,
+        raw: { rateLimited: true },
+        error: "rate_limited",
+      };
+    }
     if (offCache && offCache[upc])
       return {
         found: true,
@@ -481,6 +562,7 @@ async function lookupOpenFoodFacts(upc) {
       }
     } catch (e) {
       if (e.response && e.response.status === 429) {
+        markExternalRequestRateLimited("openfoodfacts");
         if (offCache && offCache[upc])
           return {
             found: true,
@@ -694,6 +776,15 @@ async function lookupRetailerImagesServer(upc, name) {
 
 async function lookupUPCItemDB(upc) {
   try {
+    if (isExternalRequestRateLimited("upcitemdb")) {
+      return {
+        found: false,
+        source: "UPCItemDB",
+        data: null,
+        raw: null,
+        error: "rate_limited",
+      };
+    }
     const resp = await axios.get(
       `https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(upc)}`,
       { timeout: 7000 },
@@ -703,6 +794,9 @@ async function lookupUPCItemDB(upc) {
       return { found: true, source: "UPCItemDB", data: raw.items[0], raw };
     return { found: false, source: "UPCItemDB", data: null, raw };
   } catch (e) {
+    if (e.response && e.response.status === 429) {
+      markExternalRequestRateLimited("upcitemdb");
+    }
     console.warn("UPCItemDB error", e.message);
     return {
       found: false,
@@ -799,6 +893,10 @@ async function lookupUSDANutrition(query) {
     return { found: false, error: e.message };
   }
 }
+
+app.get("/health", (req, res) => {
+  res.json({ ok: true, service: "worthington-nutrition-api", timestamp: new Date().toISOString() });
+});
 
 app.get("/product", async (req, res) => {
   try {
@@ -1089,6 +1187,16 @@ app.get("/nutrition", async (req, res) => {
     }
 
     if (resolvedSearchTerm) {
+      const usdaSearch = await lookupUSDANutrition(resolvedSearchTerm);
+      if (usdaSearch?.found && usdaSearch?.food) {
+        return res.json({
+          found: true,
+          food: usdaSearch.food,
+          foodUrl: usdaSearch.foodUrl || `https://fdc.nal.usda.gov/fdc-app.html#/search`,
+          source: "USDA Search",
+        });
+      }
+
       const fsSearch = await searchFatSecretNutrition(resolvedSearchTerm);
       if (fsSearch?.found && fsSearch?.food) {
         return res.json({
@@ -1105,6 +1213,17 @@ app.get("/nutrition", async (req, res) => {
     if (upc) {
       for (const v of variants) {
         try {
+          const offRes = await lookupOpenFoodFacts(v);
+          if (offRes?.found && offRes.data) {
+            const nutrition = convertOFFNutrition(offRes.data, resolvedSearchTerm || v);
+            return res.json({
+              found: true,
+              food: nutrition,
+              foodUrl: `https://world.openfoodfacts.org/product/${encodeURIComponent(v)}`,
+              source: "OpenFoodFacts Barcode",
+            });
+          }
+
           const fsResult = await lookupFatSecretNutrition(v);
           if (fsResult?.found && fsResult?.food && fsResult.food.servings) {
             return res.json({
@@ -1119,6 +1238,16 @@ app.get("/nutrition", async (req, res) => {
     }
 
     if (searchTerm) {
+      const usdaSearch = await lookupUSDANutrition(searchTerm);
+      if (usdaSearch?.found && usdaSearch?.food) {
+        return res.json({
+          found: true,
+          food: usdaSearch.food,
+          foodUrl: usdaSearch.foodUrl || `https://fdc.nal.usda.gov/fdc-app.html#/search`,
+          source: "USDA Search",
+        });
+      }
+
       const fsSearch = await searchFatSecretNutrition(searchTerm);
       if (fsSearch?.found && fsSearch?.food) {
         return res.json({
@@ -1136,15 +1265,15 @@ app.get("/nutrition", async (req, res) => {
       found: true,
       food: createGenericNutrition(searchTerm || upc || "Product"),
       foodUrl: `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(searchTerm || upc || "Product")}`,
-      source: "FatSecret Fallback Search",
+      source: "No reliable nutrition source available",
     });
   } catch (e) {
-    console.error("Critical nutrition endpoint error:", e.message); // Log critical errors
+    console.error("Critical nutrition endpoint error:", e.message);
     return res.json({
       found: true,
       food: createGenericNutrition(searchTerm || upc || "Product"),
       foodUrl: `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(searchTerm || upc || "Product")}`,
-      source: "FatSecret Error Fallback Search",
+      source: "No reliable nutrition source available",
     });
   }
 });
@@ -1194,14 +1323,14 @@ app.delete("/mappings", (req, res) => {
   return res.json({ ok: true });
 });
 
-let PORT = Number(process.env.PORT) || 3000;
+let PORT = Number(process.env.PORT) || 3001;
 let listeningFlag = false;
 let server = null;
 
 function startServer(port) {
-  server = app.listen(port, () => {
+  server = app.listen(port, "0.0.0.0", () => {
     listeningFlag = true;
-    console.log("Server running on port", port);
+    console.log("Server running on http://0.0.0.0:" + port);
   });
 
   server.on("error", (err) => {
@@ -1229,6 +1358,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  app,
   createGenericNutrition,
   parseFatSecretPageHtml,
   shouldUseFatSecretScrapeFallback,

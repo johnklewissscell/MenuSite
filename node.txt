@@ -1,0 +1,37 @@
+Zero-cost deployment plan (no paid plan / no credit card)
+
+Use a free public Node host such as Glitch.
+
+1) Deploy the backend to Glitch
+- Go to https://glitch.com/edit/#!/import/github
+- Import this repo or copy the contents of the backend folder
+- Use the app folder:
+  public/fatsecret-server
+- Set the project to run:
+  node server.js
+- Glitch gives you a public URL such as:
+  https://your-app-name.glitch.me
+
+2) Update the frontend config
+Open public/index.html and replace:
+
+window.MENU_API_URL = "https://your-app-name.glitch.me";
+
+with your real Glitch URL.
+
+3) Deploy the frontend to Firebase
+- Run:
+  firebase deploy
+- The site will remain static on Firebase
+- The API calls will go to the Glitch backend instead of localhost
+
+4) Important: do not use Firebase Functions unless you pay
+Firebase Functions requires the Blaze paid plan. This project is set up so it does not require that for a no-cost solution.
+
+5) Endpoint format
+The backend routes are:
+- https://your-app-name.glitch.me/mappings
+- https://your-app-name.glitch.me/nutrition
+- https://your-app-name.glitch.me/product
+
+This will work without paying anything as long as the backend is on a free host.

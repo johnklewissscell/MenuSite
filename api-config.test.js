@@ -1,22 +1,21 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { getApiOriginCandidates, getApiUrls } = require('./api-config');
+const { getApiOriginCandidates, getApiUrls } = require('./public/api-config');
 
-test('getApiOriginCandidates includes localhost ports in order', () => {
-  const origins = getApiOriginCandidates([3000, 3002]);
+test('uses a configured public backend host instead of localhost', () => {
+  globalThis.MENU_API_URL = 'https://example-glitch-app.glitch.me';
+  const origins = getApiOriginCandidates();
 
   assert.deepEqual(origins, [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:3002',
-    'http://127.0.0.1:3002',
+    'https://example-glitch-app.glitch.me',
   ]);
 });
 
-test('getApiUrls includes the active port and a relative fallback', () => {
-  const urls = getApiUrls('/nutrition', [3000, 3002]);
+test('getApiUrls uses the configured public backend host and relative fallback only', () => {
+  globalThis.MENU_API_URL = 'https://example-glitch-app.glitch.me';
+  const urls = getApiUrls('/nutrition');
 
-  assert.ok(urls.includes('http://localhost:3002/nutrition'));
+  assert.ok(urls.includes('https://example-glitch-app.glitch.me/nutrition'));
   assert.ok(urls.includes('/nutrition'));
-  assert.ok(urls.includes('http://localhost:3000/nutrition'));
+  assert.ok(!urls.some((url) => url.includes('localhost')));
 });

@@ -1,9 +1,18 @@
-const NUTRITION_API = "http://localhost:3000/nutrition";
+const NUTRITION_API = "/nutrition";
+
+function getApiBase() {
+  return (typeof window !== "undefined" && window.MENU_API_URL) || "";
+}
 
 let allProducts = [];
 
 async function fetchJSONWithFallback(path, opts) {
-  const urls = ["http://localhost:3000" + path, path];
+  const apiBase = getApiBase();
+  const urls = [];
+  if (!apiBase) {
+    throw new Error("No public API URL configured. Set window.MENU_API_URL to your backend host.");
+  }
+  urls.push(`${apiBase}${path}`);
   for (const u of urls) {
     try {
       const res = await fetch(u, opts);
@@ -29,7 +38,7 @@ function escapeRegExp(str) {
 async function loadMappings() {
   const container = document.getElementById("menu-container");
 
-  try {
+  try {    
     const mappings = await fetchJSONWithFallback("/mappings");
     const upcs = Object.keys(mappings || {}).reverse();
     

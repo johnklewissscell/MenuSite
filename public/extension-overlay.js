@@ -1,10 +1,15 @@
 (function () {
-  const API_DEFAULT = "http://localhost:3000";
+  function getApiDefault() {
+    return (typeof window !== "undefined" && window.MENU_API_URL) || "";
+  }
 
   async function fetchJSONWithFallback(path, opts) {
     const urls = window.MenuSiteApi?.getApiUrls
       ? window.MenuSiteApi.getApiUrls(path)
-      : [API_DEFAULT + path, path];
+      : [];
+    const apiDefault = getApiDefault();
+    if (apiDefault) urls.unshift(apiDefault + path);
+    if (!urls.includes(path)) urls.push(path);
     for (const u of urls) {
       try {
         const res = await fetch(u, opts);
