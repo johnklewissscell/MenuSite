@@ -1211,43 +1211,6 @@ app.get("/nutrition", async (req, res) => {
     );
 
     let resolvedSearchTerm = searchTerm;
-    if (!resolvedSearchTerm && upc) {
-      for (const v of variants) {
-        try {
-          const offRes = await lookupOpenFoodFacts(v);
-          if (offRes?.found && offRes.data) {
-            const productName =
-              offRes.data.product_name ||
-              offRes.data.title ||
-              offRes.data.name ||
-              offRes.data.food_name ||
-              "";
-            const brand = offRes.data.brands || offRes.data.brand || offRes.data.brand_name || "";
-            resolvedSearchTerm = [brand, productName].filter(Boolean).join(" ").trim();
-            if (resolvedSearchTerm) break;
-          }
-        } catch (e) {}
-      }
-    }
-
-    if (!resolvedSearchTerm && upc) {
-      for (const v of variants) {
-        try {
-          const upcRes = await lookupUPCItemDB(v);
-          if (upcRes?.found && upcRes.data) {
-            const productName =
-              upcRes.data.title ||
-              upcRes.data.name ||
-              upcRes.data.product_name ||
-              "";
-            const brand = upcRes.data.brand || upcRes.data.brand_name || "";
-            resolvedSearchTerm = [brand, productName].filter(Boolean).join(" ").trim();
-            if (resolvedSearchTerm) break;
-          }
-        } catch (e) {}
-      }
-    }
-
     if (upc) {
       for (const v of variants) {
         try {
@@ -1258,17 +1221,6 @@ app.get("/nutrition", async (req, res) => {
               food: fsResult.food,
               foodUrl: fsResult.food.food_url,
               source: "FatSecret Barcode API",
-            });
-          }
-
-          const offRes = await lookupOpenFoodFacts(v);
-          if (offRes?.found && offRes.data) {
-            const nutrition = convertOFFNutrition(offRes.data, resolvedSearchTerm || v);
-            return res.json({
-              found: true,
-              food: nutrition,
-              foodUrl: `https://world.openfoodfacts.org/product/${encodeURIComponent(v)}`,
-              source: "OpenFoodFacts Barcode",
             });
           }
         } catch (e) {}
@@ -1287,16 +1239,6 @@ app.get("/nutrition", async (req, res) => {
           source: "FatSecret (Search by Product Name)",
         });
       }
-
-      const usdaSearch = await lookupUSDANutrition(resolvedSearchTerm);
-      if (usdaSearch?.found && usdaSearch?.food) {
-        return res.json({
-          found: true,
-          food: usdaSearch.food,
-          foodUrl: usdaSearch.foodUrl || `https://fdc.nal.usda.gov/fdc-app.html#/search`,
-          source: "USDA Search",
-        });
-      }
     }
 
     if (searchTerm) {
@@ -1311,31 +1253,21 @@ app.get("/nutrition", async (req, res) => {
           source: "FatSecret (Search)",
         });
       }
-
-      const usdaSearch = await lookupUSDANutrition(searchTerm);
-      if (usdaSearch?.found && usdaSearch?.food) {
-        return res.json({
-          found: true,
-          food: usdaSearch.food,
-          foodUrl: usdaSearch.foodUrl || `https://fdc.nal.usda.gov/fdc-app.html#/search`,
-          source: "USDA Search",
-        });
-      }
     }
 
     return res.json({
-      found: true,
-      food: createGenericNutrition(searchTerm || upc || "Product"),
-      foodUrl: `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(searchTerm || upc || "Product")}`,
-      source: "No reliable nutrition source available",
+      found: false,
+      food: null,
+      foodUrl: `https://platform.fatsecret.com/api-demo#barcode-api`,
+      source: "FatSecret only: barcode lookup blocked or product not found",
     });
   } catch (e) {
     console.error("Critical nutrition endpoint error:", e.message);
     return res.json({
-      found: true,
-      food: createGenericNutrition(searchTerm || upc || "Product"),
-      foodUrl: `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(searchTerm || upc || "Product")}`,
-      source: "No reliable nutrition source available",
+      found: false,
+      food: null,
+      foodUrl: `https://platform.fatsecret.com/api-demo#barcode-api`,
+      source: "FatSecret only: barcode lookup blocked or product not found",
     });
   }
 });
