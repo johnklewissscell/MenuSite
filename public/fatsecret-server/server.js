@@ -897,7 +897,15 @@ app.get("/product", async (req, res) => {
       });
 
       if (fatsecret?.found && fatsecret.food) {
-        foundProduct = fatsecret.food;
+        // Normalize FatSecret response to product format
+        const food = fatsecret.food;
+        foundProduct = {
+          product_name: food.food_name || food.product_name || "Unknown",
+          brand_name: food.brand_name || "",
+          images: food.images || [],
+          food_id: food.food_id,
+          food_type: "FatSecret",
+        };
         break;
       }
     }
