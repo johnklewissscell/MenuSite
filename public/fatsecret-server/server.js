@@ -48,13 +48,7 @@ try {
 try {
   if (fs.existsSync(fatSecretCachePath)) {
     const loaded = JSON.parse(fs.readFileSync(fatSecretCachePath, "utf8") || "{}");
-    if (isSuspectFatSecretCache(loaded)) {
-      fatSecretCache = {};
-      fs.writeFileSync(fatSecretCachePath, JSON.stringify(fatSecretCache, null, 2));
-      console.warn("Cleared stale FatSecret cache because many unrelated UPCs mapped to the same product.");
-    } else {
-      fatSecretCache = loaded;
-    }
+    fatSecretCache = loaded;
   }
 } catch (e) {
   console.warn("load fatsecret cache failed", e.message);
@@ -140,10 +134,9 @@ function shouldUseCachedFatSecretAnswer(entry, fallbackKey = "") {
   const food = entry?.food;
   if (!food) return false;
   const foodName = String(food.food_name || "").trim();
-  if (!foodName || foodName === "Unknown Product" || foodName === "Product") return false;
-  if (fallbackKey && /^\d{8,14}$/.test(String(fallbackKey).trim()) && foodName === String(fallbackKey).trim()) return false;
-  if (isSuspectFatSecretCache({ _test: entry })) return false;
-  return Boolean(food.servings?.serving?.length);
+  if (!foodName) return false;
+  if (foodName === "Unknown Product" || foodName === "Product") return false;
+  return Boolean(food.servings?.serving && (food.servings.serving.calories || food.servings.serving[0]?.calories));
 }
 
 let fatSecretToken = null;
