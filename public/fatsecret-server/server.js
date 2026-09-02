@@ -421,33 +421,25 @@ async function lookupFatSecretNutrition(upc) {
     return { found: false };
   }
   try {
-    const findResp = await axios.get(
+    const findResp = await axios.post(
       "https://platform.fatsecret.com/rest/food/barcode/find-by-id/v2",
+      { barcode: upc },
       {
-        params: {
-          barcode: upc,
-          format: "json",
-          region: "US",
-          language: "en",
-          flag_default_serving: true,
-        },
         headers: {
           Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
         },
+        timeout: 10000,
       },
     );
 
     const food = findResp.data?.food;
-    if (!food) {
-      if (shouldUseFatSecretScrapeFallback(normalizedUpc)) {
-        const scraped = await lookupFatSecretScrape(normalizedUpc, normalizedUpc);
-        if (scraped.found) {
-          setCachedFatSecretAnswer(normalizedUpc, scraped);
-          return scraped;
-        }
-      }
+    if (!food || !food.food_id) {
+      console.warn(`FatSecret barcode ${upc}: no food found, status=${findResp.status}`);
       return { found: false };
     }
+    
+    console.log(`FatSecret barcode ${upc} found: ${food.food_name}`);
 
     const foodId = food.food_id || food.id || null;
     if (foodId) {
@@ -493,14 +485,7 @@ async function lookupFatSecretNutrition(upc) {
     setCachedFatSecretAnswer(normalizedUpc, result);
     return result;
   } catch (e) {
-    console.warn("FatSecret Lookup Error:", e.message);
-    if (shouldUseFatSecretScrapeFallback(normalizedUpc)) {
-      const scraped = await lookupFatSecretScrape(normalizedUpc, normalizedUpc);
-      if (scraped.found) {
-        setCachedFatSecretAnswer(normalizedUpc, scraped);
-        return scraped;
-      }
-    }
+    console.warn(`FatSecret Lookup Error for ${upc}:`, e.message);
     return { found: false };
   }
 }
