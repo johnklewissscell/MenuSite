@@ -910,17 +910,43 @@ app.get("/product", async (req, res) => {
       });
     }
 
+    // Fall back to Open Food Facts for product metadata only
+    if (!foundProduct) {
+      for (const v of variants) {
+        try {
+          const offResp = await axios.get(
+            `https://world.openfoodfacts.org/api/v0/product/${v}.json`,
+            { timeout: 5000 },
+          );
+          if (offResp.data && offResp.data.product) {
+            const p = offResp.data.product;
+            foundProduct = {
+              product_name: p.product_name || p.generic_name || "Unknown",
+              brand_name: p.brands || "",
+              images: p.image_front_url ? [p.image_front_url] : [],
+              food_id: `off-${v}`,
+              food_type: "Product (metadata only)",
+            };
+            console.log(`Found ${v} in Open Food Facts: ${foundProduct.product_name}`);
+            break;
+          }
+        } catch (e) {
+          // OFF failed, continue
+        }
+      }
+    }
+
     if (!foundProduct) {
       return res.json({
         found: false,
         product: null,
-        source: "FatSecret only: barcode lookup blocked or product not found",
+        source: "No product data available",
       });
     }
 
     return res.json({
       found: true,
-      source: "FatSecret Barcode API",
+      source: foundProduct.food_type,
       product: foundProduct,
     });
   } catch (e) {
