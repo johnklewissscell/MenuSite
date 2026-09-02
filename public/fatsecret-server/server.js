@@ -1213,6 +1213,16 @@ app.get("/nutrition", async (req, res) => {
     if (upc) {
       for (const v of variants) {
         try {
+          const fsResult = await lookupFatSecretNutrition(v);
+          if (fsResult?.found && fsResult?.food && fsResult.food.servings) {
+            return res.json({
+              found: true,
+              food: fsResult.food,
+              foodUrl: fsResult.food.food_url,
+              source: "FatSecret Barcode API",
+            });
+          }
+
           const offRes = await lookupOpenFoodFacts(v);
           if (offRes?.found && offRes.data) {
             const nutrition = convertOFFNutrition(offRes.data, resolvedSearchTerm || v);
@@ -1221,16 +1231,6 @@ app.get("/nutrition", async (req, res) => {
               food: nutrition,
               foodUrl: `https://world.openfoodfacts.org/product/${encodeURIComponent(v)}`,
               source: "OpenFoodFacts Barcode",
-            });
-          }
-
-          const fsResult = await lookupFatSecretNutrition(v);
-          if (fsResult?.found && fsResult?.food && fsResult.food.servings) {
-            return res.json({
-              found: true,
-              food: fsResult.food,
-              foodUrl: fsResult.food.food_url,
-              source: "FatSecret Barcode API",
             });
           }
         } catch (e) {}
