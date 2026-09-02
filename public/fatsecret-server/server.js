@@ -190,35 +190,70 @@ function parseFatSecretPageHtml(html, productName = "", foodUrl = null) {
   const parsedTitle = decodeHtmlEntities(titleMatch?.[1]).trim() || baseName;
   const parsedBrand = decodeHtmlEntities(brandMatch?.[1]).trim() || "";
   const pageText = stripHtml(html);
+  const normalizedPageText = pageText.replace(/\s+/g, " ").trim();
+
   const fetchFactValue = (labels, units = "(?:g|mg|mcg|IU|kcal|calories?)") => {
     const labelList = Array.isArray(labels) ? labels : [labels];
-    for (const label of labelList) {
-      const labelPattern = new RegExp(
-        `<div class=["']factTitle["']>${escapeRegExp(label)}<\\/div>\\s*<div class=["']factValue["']>([^<]+)<\\/div>`,
-        "i",
-      );
-      const match = html.match(labelPattern);
-      if (match && match[1]) return match[1];
+    const allowedUnitPattern = units || "(?:g|mg|mcg|IU|kcal|calories?)";
 
-      const rowPattern = new RegExp(
-        `<tr[^>]*>[\\s\\S]*?${escapeRegExp(label)}[\\s\\S]*?<\\/tr>`,
-        "i",
-      );
-      const rowMatch = html.match(rowPattern);
-      if (rowMatch) {
-        const rowText = stripHtml(rowMatch[0]);
-        const rowValueMatch = rowText.match(
-          new RegExp(`${escapeRegExp(label)}\\s*[:\\-]?\\s*([<>]?\\s*\\d[\\d,.]*(?:\\.\\d+)?\\s*${units})`, "i"),
-        );
-        if (rowValueMatch && rowValueMatch[1]) return rowValueMatch[1];
+    const scanTextForMatch = (text) => {
+      for (const label of labelList) {
+        const variants = Array.from(new Set([label, ...label.split(/\s+/).filter(Boolean)]));
+        for (const variant of variants) {
+          const needle = String(variant).trim();
+          if (!needle) continue;
+          const lower = (text || "").toLowerCase();
+          const labelIndex = lower.indexOf(needle.toLowerCase());
+          if (labelIndex === -1) continue;
+
+          const afterLabel = text.slice(labelIndex + needle.length);
+          const directMatch = afterLabel.match(
+            new RegExp(`^\\s*[:\-]?\\s*([<>]?\\s*\\d[\\d,.]*(?:\\.\\d+)?\\s*(?:${allowedUnitPattern})?)`, "i"),
+          );
+          if (directMatch && directMatch[1]) {
+            return directMatch[1].trim();
+          }
+
+          const fallback = afterLabel.match(
+            /\d[\d,\.]*?(?:\.\d+)?\s*(?:g|mg|mcg|iu|kcal|calories?)?/i,
+          );
+          if (fallback && fallback[0]) {
+            return fallback[0].trim();
+          }
+        }
       }
+      return null;
+    };
 
-      const textMatch = pageText.match(
-        new RegExp(`${escapeRegExp(label)}\\s*[:\\-]?\\s*([<>]?\\s*\\d[\\d,.]*(?:\\.\\d+)?\\s*${units})`, "i"),
-      );
-      if (textMatch && textMatch[1]) return textMatch[1];
+    const htmlPatterns = [
+      /<div[^>]*class=["']factTitle["'][^>]*>(.*?)<\/div>\s*<div[^>]*class=["']factValue["'][^>]*>(.*?)<\/div>/gi,
+      /<div[^>]*>\s*(.*?)\s*<\/div>\s*<div[^>]*>\s*(.*?)\s*<\/div>/gi,
+      /<td[^>]*>\s*(.*?)\s*<\/td>\s*<td[^>]*>\s*(.*?)\s*<\/td>/gi,
+    ];
+
+    for (const pattern of htmlPatterns) {
+      const matches = [...html.matchAll(pattern)];
+      for (const match of matches) {
+        if (!match[2]) continue;
+        const labelSegment = match[1] || "";
+        const valueSegment = match[2] || "";
+        const labelText = stripHtml(labelSegment).trim();
+        if (!labelText) continue;
+        const normalizedLabel = labelText.replace(/\s+/g, " ").trim();
+        if (!labelList.some((label) => String(label).toLowerCase() === normalizedLabel.toLowerCase() || normalizedLabel.toLowerCase().includes(String(label).toLowerCase()))) {
+          continue;
+        }
+        const rawValue = stripHtml(valueSegment).trim();
+        if (rawValue) return rawValue;
+      }
     }
-    return null;
+
+    const pageTextCandidate = normalizedPageText;
+    const directScan = scanTextForMatch(pageTextCandidate);
+    if (directScan) return directScan;
+
+    const genericScan = scanTextForMatch(pageText);
+    return genericScan;
   };
 
   const calories = parseValue(fetchFactValue(["Calories"], "(?:kcal|calories?)"));
@@ -237,9 +272,10 @@ function parseFatSecretPageHtml(html, productName = "", foodUrl = null) {
   const vitaminD = parseValue(fetchFactValue(["Vitamin D"]));
 
   const servingMatch = html.match(/There are\s+<b>(\d+)\s+calories<\/b>\s+in\s+([^<.]+?)(?:\s+of\s+.+)?\./i);
+  const servingDescriptionFromText = normalizedPageText.match(/Serving\s+Size\s*([A-Za-z0-9.\-]+(?:\s+[A-Za-z0-9.\-]+){0,3})(?=\s*Amount\s+Per\s+Serving|$)/i)?.[1]?.trim();
   const servingDescription = servingMatch?.[2]
     ? servingMatch[2].replace(/<[^>]+>/g, "").trim()
-    : "per serving";
+    : (servingDescriptionFromText || "per serving");
 
   const normalizedServingDescription = servingDescription.includes(" of ")
     ? servingDescription.split(/\s+of\s+/i)[0].trim()
@@ -1187,16 +1223,6 @@ app.get("/nutrition", async (req, res) => {
     }
 
     if (resolvedSearchTerm) {
-      const usdaSearch = await lookupUSDANutrition(resolvedSearchTerm);
-      if (usdaSearch?.found && usdaSearch?.food) {
-        return res.json({
-          found: true,
-          food: usdaSearch.food,
-          foodUrl: usdaSearch.foodUrl || `https://fdc.nal.usda.gov/fdc-app.html#/search`,
-          source: "USDA Search",
-        });
-      }
-
       const fsSearch = await searchFatSecretNutrition(resolvedSearchTerm);
       if (fsSearch?.found && fsSearch?.food) {
         return res.json({
@@ -1206,6 +1232,16 @@ app.get("/nutrition", async (req, res) => {
             fsSearch.food.food_url ||
             `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(resolvedSearchTerm)}`,
           source: "FatSecret (Search by Product Name)",
+        });
+      }
+
+      const usdaSearch = await lookupUSDANutrition(resolvedSearchTerm);
+      if (usdaSearch?.found && usdaSearch?.food) {
+        return res.json({
+          found: true,
+          food: usdaSearch.food,
+          foodUrl: usdaSearch.foodUrl || `https://fdc.nal.usda.gov/fdc-app.html#/search`,
+          source: "USDA Search",
         });
       }
     }
@@ -1238,16 +1274,6 @@ app.get("/nutrition", async (req, res) => {
     }
 
     if (searchTerm) {
-      const usdaSearch = await lookupUSDANutrition(searchTerm);
-      if (usdaSearch?.found && usdaSearch?.food) {
-        return res.json({
-          found: true,
-          food: usdaSearch.food,
-          foodUrl: usdaSearch.foodUrl || `https://fdc.nal.usda.gov/fdc-app.html#/search`,
-          source: "USDA Search",
-        });
-      }
-
       const fsSearch = await searchFatSecretNutrition(searchTerm);
       if (fsSearch?.found && fsSearch?.food) {
         return res.json({
@@ -1257,6 +1283,16 @@ app.get("/nutrition", async (req, res) => {
             fsSearch.food.food_url ||
             `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(searchTerm)}`,
           source: "FatSecret (Search)",
+        });
+      }
+
+      const usdaSearch = await lookupUSDANutrition(searchTerm);
+      if (usdaSearch?.found && usdaSearch?.food) {
+        return res.json({
+          found: true,
+          food: usdaSearch.food,
+          foodUrl: usdaSearch.foodUrl || `https://fdc.nal.usda.gov/fdc-app.html#/search`,
+          source: "USDA Search",
         });
       }
     }
