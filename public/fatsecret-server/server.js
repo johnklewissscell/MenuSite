@@ -1018,20 +1018,6 @@ function createGenericNutrition(productName = "Product") {
   };
 }
 
-async function lookupOpenFoodFactsSearch(query) {
-  if (!query) return { found: false, data: null, raw: null };
-  try {
-    const sUrl = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(query)}&search_simple=1&json=1`;
-    const sresp = await axios.get(sUrl, { timeout: 7000 });
-    const sraw = sresp.data;
-    if (sraw && sraw.products && sraw.products.length) {
-      return { found: true, data: sraw.products[0], raw: sraw };
-    }
-  } catch (e) {
-    console.warn("OpenFoodFacts search error", e.message);
-  }
-  return { found: false, data: null, raw: null };
-}
 
 app.get("/nutrition", async (req, res) => {
   const upc = (req.query.upc || req.query.barcode || "").trim();
