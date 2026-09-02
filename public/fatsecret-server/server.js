@@ -893,13 +893,6 @@ app.get("/product", async (req, res) => {
     const upc = (req.query.upc || "").trim();
     const debug = req.query.debug === "1" || req.query.debug === "true";
     if (!upc) return res.status(400).json({ error: "Missing UPC" });
-    const attempts = [];
-    let final = {};
-
-    try {
-      if (fs.existsSync(mappingsPath))
-        mappings = JSON.parse(fs.readFileSync(mappingsPath, "utf8") || "{}");
-    } catch (e) {}
 
     const variants = Array.from(
       new Set(
@@ -913,122 +906,44 @@ app.get("/product", async (req, res) => {
         ].filter(Boolean),
       ),
     );
-    let manual = null;
-    let matched = null;
-    for (const v of variants) {
-      if (mappings[v]) {
-        manual = mappings[v];
-        matched = v;
-        break;
-      }
-    }
-    const hasManual =
-      manual && manual.data && Object.keys(manual.data).length > 0;
-    if (hasManual) {
-      attempts.push({
-        source: "manual",
-        found: true,
-        data: manual.data,
-        matched,
-      });
-      final = { ...manual.data };
-    }
 
-    // Open Food Facts metadata + images
-    for (const v of variants) {
-      const offRes = await lookupOpenFoodFacts(v);
-      const imgs = offRes?.found
-        ? extractImageUrlsFromPayload(offRes.data)
-        : [];
+    const attempts = [];
+    let foundProduct = null;
 
+    for (const v of variants) {
+      const fatsecret = await lookupFatSecretNutrition(v);
       attempts.push({
         variant: v,
-        source: "openfoodfacts",
-        images: imgs,
+        source: "fatsecret",
+        found: !!fatsecret?.found,
       });
 
-      if (offRes?.found && offRes.data) {
-        mergeProductMetadata(final, offRes.data);
-        if (imgs.length && (!final.images || final.images.length === 0)) {
-          final.images = imgs;
-        }
+      if (fatsecret?.found && fatsecret.food) {
+        foundProduct = fatsecret.food;
         break;
       }
     }
-
-    // UPCItemDB metadata + images fallback
-    if (!final.product_name && !final.brands && !final.description) {
-      for (const v of variants) {
-        const upcdbRes = await lookupUPCItemDB(v);
-        const imgs = upcdbRes?.found
-          ? extractImageUrlsFromPayload(upcdbRes.data)
-          : [];
-
-        attempts.push({
-          variant: v,
-          source: "upcitemdb",
-          images: imgs,
-        });
-
-        if (upcdbRes?.found && upcdbRes.data) {
-          mergeProductMetadata(final, upcdbRes.data);
-          if (imgs.length && (!final.images || final.images.length === 0)) {
-            final.images = imgs;
-          }
-          break;
-        }
-      }
-    }
-
-    // Retailer scraping fallback
-    if (!final.images || final.images.length === 0) {
-      for (const v of variants) {
-        const imgs = await lookupRetailerImagesServer(
-          v,
-          final.product_name || "",
-        );
-
-        attempts.push({
-          variant: v,
-          source: "retailer-scrape",
-          images: imgs,
-        });
-
-        if (imgs && imgs.length) {
-          final.images = imgs;
-          break;
-        }
-      }
-    }
-
-    const productFound =
-      final.product_name || (final.images && final.images.length);
 
     if (debug) {
       return res.json({
-        found: !!productFound,
+        found: !!foundProduct,
         attempts,
-        final,
+        product: foundProduct || null,
       });
     }
 
-    if (!productFound) {
-      return res.json({ found: false });
+    if (!foundProduct) {
+      return res.json({
+        found: false,
+        product: null,
+        source: "FatSecret only: barcode lookup blocked or product not found",
+      });
     }
 
     return res.json({
       found: true,
-      source: "FatSecret + OpenFoodFacts",
-      product: final,
-    });
-
-    const found = final.product_name || (final.images && final.images.length);
-    if (debug) return res.json({ found: !!found, attempts, final });
-    if (!found) return res.json({ found: false });
-    return res.json({
-      found: true,
-      source: hasManual ? "manual+off" : "off",
-      product: final,
+      source: "FatSecret Barcode API",
+      product: foundProduct,
     });
   } catch (e) {
     console.error("product error", e.message);

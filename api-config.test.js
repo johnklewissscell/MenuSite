@@ -1,7 +1,19 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { getApiOriginCandidates, getApiUrls } = require('./public/api-config');
-const { parseFatSecretPageHtml } = require('./public/fatsecret-server/server');
+const { app, parseFatSecretPageHtml } = require('./public/fatsecret-server/server');
+
+async function fetchJsonFromApp(pathname) {
+  const server = app.listen(0);
+  try {
+    await new Promise((resolve) => server.once('listening', resolve));
+    const { port } = server.address();
+    const res = await fetch(`http://127.0.0.1:${port}${pathname}`);
+    return { status: res.status, body: await res.json() };
+  } finally {
+    await new Promise((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+  }
+}
 
 test('uses a configured public backend host instead of localhost', () => {
   globalThis.MENU_API_URL = 'https://example-glitch-app.glitch.me';
@@ -57,4 +69,13 @@ test('parseFatSecretPageHtml reads nutrition card values from the FatSecret nutr
   assert.equal(serving.carbohydrate, 38);
   assert.equal(serving.sugar, 38);
   assert.equal(serving.protein, 0);
+});
+
+test('product route does not 500 when FatSecret lookup is unavailable or returns a cached hit', async () => {
+  const result = await fetchJsonFromApp('/product?upc=0030100215981');
+
+  assert.equal(result.status, 200);
+  assert.ok(typeof result.body === 'object' && result.body !== null);
+  assert.ok(typeof result.body.found === 'boolean');
+  assert.ok(result.body.product === undefined || result.body.product === null || result.body.product === false || typeof result.body.product === 'object');
 });
