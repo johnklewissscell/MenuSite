@@ -1222,30 +1222,6 @@ app.get("/nutrition", async (req, res) => {
       }
     }
 
-    if (resolvedSearchTerm) {
-      const fsSearch = await searchFatSecretNutrition(resolvedSearchTerm);
-      if (fsSearch?.found && fsSearch?.food) {
-        return res.json({
-          found: true,
-          food: fsSearch.food,
-          foodUrl:
-            fsSearch.food.food_url ||
-            `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(resolvedSearchTerm)}`,
-          source: "FatSecret (Search by Product Name)",
-        });
-      }
-
-      const usdaSearch = await lookupUSDANutrition(resolvedSearchTerm);
-      if (usdaSearch?.found && usdaSearch?.food) {
-        return res.json({
-          found: true,
-          food: usdaSearch.food,
-          foodUrl: usdaSearch.foodUrl || `https://fdc.nal.usda.gov/fdc-app.html#/search`,
-          source: "USDA Search",
-        });
-      }
-    }
-
     if (upc) {
       for (const v of variants) {
         try {
@@ -1270,6 +1246,30 @@ app.get("/nutrition", async (req, res) => {
             });
           }
         } catch (e) {}
+      }
+    }
+
+    if (resolvedSearchTerm) {
+      const fsSearch = await searchFatSecretNutrition(resolvedSearchTerm);
+      if (fsSearch?.found && fsSearch?.food) {
+        return res.json({
+          found: true,
+          food: fsSearch.food,
+          foodUrl:
+            fsSearch.food.food_url ||
+            `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(resolvedSearchTerm)}`,
+          source: "FatSecret (Search by Product Name)",
+        });
+      }
+
+      const usdaSearch = await lookupUSDANutrition(resolvedSearchTerm);
+      if (usdaSearch?.found && usdaSearch?.food) {
+        return res.json({
+          found: true,
+          food: usdaSearch.food,
+          foodUrl: usdaSearch.foodUrl || `https://fdc.nal.usda.gov/fdc-app.html#/search`,
+          source: "USDA Search",
+        });
       }
     }
 
