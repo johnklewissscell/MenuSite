@@ -1,37 +1,55 @@
 Zero-cost deployment plan (no paid plan / no credit card)
 
-Use a free public Node host such as Glitch.
+IMPORTANT: FatSecret rejects the current public IP with the message:
+"Invalid IP address detected: '75.118.86.65'"
 
-1) Deploy the backend to Glitch
-- Go to https://glitch.com/edit/#!/import/github
-- Import this repo or copy the contents of the backend folder
-- Use the app folder:
+That means the backend must be deployed to a different public IP / public host before the barcode API will work. This is not a code issue.
+
+Use a free public Node host such as Render, Railway, or another fresh public provider.
+
+1) Deploy the backend to a fresh public host
+- Create a new Render service (or another new host)
+- Connect the GitHub repo
+- Set the root directory to:
   public/fatsecret-server
-- Set the project to run:
+- Set the start command to:
   node server.js
-- Glitch gives you a public URL such as:
-  https://your-app-name.glitch.me
+- Use a fresh public IP / fresh host instance
+
+Example Render setup:
+- GitHub repo: your repo
+- Root Directory: public/fatsecret-server
+- Build command: npm install
+- Start command: node server.js
 
 2) Update the frontend config
 Open public/index.html and replace:
 
-window.MENU_API_URL = "https://your-app-name.glitch.me";
+window.MENU_API_URL = "https://your-app-name.onrender.com";
 
-with your real Glitch URL.
+with your real backend URL.
 
 3) Deploy the frontend to Firebase
 - Run:
   firebase deploy
 - The site will remain static on Firebase
-- The API calls will go to the Glitch backend instead of localhost
+- The API calls will go to the new public backend instead of localhost
 
 4) Important: do not use Firebase Functions unless you pay
 Firebase Functions requires the Blaze paid plan. This project is set up so it does not require that for a no-cost solution.
 
 5) Endpoint format
 The backend routes are:
-- https://your-app-name.glitch.me/mappings
-- https://your-app-name.glitch.me/nutrition
-- https://your-app-name.glitch.me/product
+- https://your-new-public-host/mappings
+- https://your-new-public-host/nutrition
+- https://your-new-public-host/product
 
-This will work without paying anything as long as the backend is on a free host.
+6) FatSecret requirement
+The data source is still FatSecret only. The barcode API must be reachable from a public IP FatSecret accepts. If the IP is blocked, the endpoint will return no nutrition data no matter how the parser is written.
+
+7) Test the live endpoint
+After deployment, test:
+- https://your-new-public-host/health
+- https://your-new-public-host/nutrition?upc=0049000028928
+
+If the server still returns the invalid IP message, the new host is also blocked and you need a different public IP or FatSecret approval.
