@@ -46,8 +46,16 @@ try {
   console.warn("load off cache failed", e.message);
 }
 try {
-  if (fs.existsSync(fatSecretCachePath))
-    fatSecretCache = JSON.parse(fs.readFileSync(fatSecretCachePath, "utf8") || "{}");
+  if (fs.existsSync(fatSecretCachePath)) {
+    const loaded = JSON.parse(fs.readFileSync(fatSecretCachePath, "utf8") || "{}");
+    if (isSuspectFatSecretCache(loaded)) {
+      fatSecretCache = {};
+      fs.writeFileSync(fatSecretCachePath, JSON.stringify(fatSecretCache, null, 2));
+      console.warn("Cleared stale FatSecret cache because many unrelated UPCs mapped to the same product.");
+    } else {
+      fatSecretCache = loaded;
+    }
+  }
 } catch (e) {
   console.warn("load fatsecret cache failed", e.message);
 }
@@ -111,12 +119,30 @@ function setCachedFatSecretAnswer(key, value) {
   saveFatSecretCache();
 }
 
+function isSuspectFatSecretCache(cacheObject) {
+  if (!cacheObject || typeof cacheObject !== "object") return false;
+  const entries = Object.values(cacheObject).filter((entry) => entry && entry.food && entry.food.food_name);
+  if (entries.length < 8) return false;
+
+  const counts = new Map();
+  for (const entry of entries) {
+    const name = String(entry.food.food_name || "").trim().toLowerCase();
+    if (!name) continue;
+    counts.set(name, (counts.get(name) || 0) + 1);
+  }
+
+  if (counts.size === 0) return false;
+  const dominant = [...counts.values()].sort((a, b) => b - a)[0] || 0;
+  return dominant / entries.length > 0.7;
+}
+
 function shouldUseCachedFatSecretAnswer(entry, fallbackKey = "") {
   const food = entry?.food;
   if (!food) return false;
   const foodName = String(food.food_name || "").trim();
   if (!foodName || foodName === "Unknown Product" || foodName === "Product") return false;
   if (fallbackKey && /^\d{8,14}$/.test(String(fallbackKey).trim()) && foodName === String(fallbackKey).trim()) return false;
+  if (isSuspectFatSecretCache({ _test: entry })) return false;
   return Boolean(food.servings?.serving?.length);
 }
 
