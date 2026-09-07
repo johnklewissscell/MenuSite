@@ -3,9 +3,9 @@ const assert = require('node:assert/strict');
 
 const { parseFatSecretPageHtml, shouldUseFatSecretScrapeFallback } = require('./server');
 
-test('shouldUseFatSecretScrapeFallback ignores numeric UPCs', () => {
-  assert.equal(shouldUseFatSecretScrapeFallback('0028400042437'), false);
+test('shouldUseFatSecretScrapeFallback only accepts named searches', () => {
   assert.equal(shouldUseFatSecretScrapeFallback('Doritos Nacho Cheese'), true);
+  assert.equal(shouldUseFatSecretScrapeFallback('0028400042437'), false);
 });
 
 test('parseFatSecretPageHtml extracts nutrition values from FatSecret HTML', () => {

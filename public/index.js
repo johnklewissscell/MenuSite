@@ -152,7 +152,7 @@ async function loadNutrition(item) {
       return;
     }
 
-    if (item.name || item.brand) {
+    if (!item.UPC && (item.name || item.brand)) {
       params = new URLSearchParams({
         name: item.name || "",
         brand: item.brand || "",

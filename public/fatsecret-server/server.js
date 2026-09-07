@@ -133,6 +133,7 @@ function isSuspectFatSecretCache(cacheObject) {
 function shouldUseCachedFatSecretAnswer(entry, fallbackKey = "") {
   const food = entry?.food;
   if (!food) return false;
+  if (/^off-/i.test(String(food.food_id || ""))) return false;
   const foodName = String(food.food_name || "").trim();
   if (!foodName) return false;
   if (foodName === "Unknown Product" || foodName === "Product") return false;
@@ -334,13 +335,14 @@ function parseFatSecretPageHtml(html, productName = "", foodUrl = null) {
 function shouldUseFatSecretScrapeFallback(query) {
   const raw = String(query || "").trim();
   if (!raw) return false;
-  if (/^\d{8,14}$/.test(raw)) return false;
   return /[A-Za-z]/.test(raw);
 }
 
-async function lookupFatSecretScrape(query, label = "") {
+async function lookupFatSecretScrape(query, label = "", allowNumericQuery = false, pageValidator = null) {
   const searchQuery = String(query || label || "").trim();
-  if (!searchQuery || !shouldUseFatSecretScrapeFallback(searchQuery)) return { found: false };
+  if (!searchQuery || (!allowNumericQuery && !shouldUseFatSecretScrapeFallback(searchQuery))) {
+    return { found: false };
+  }
 
   const searchUrls = [
     `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(searchQuery)}`,
@@ -374,6 +376,7 @@ async function lookupFatSecretScrape(query, label = "") {
           });
           const pageHtml = pageResp.data || "";
           if (!pageHtml) continue;
+          if (pageValidator && !pageValidator(pageHtml)) continue;
           const parsed = parseFatSecretPageHtml(pageHtml, searchQuery, pageUrl);
           if (parsed) {
             return {
@@ -395,6 +398,17 @@ async function lookupFatSecretScrape(query, label = "") {
   return { found: false };
 }
 
+async function lookupFatSecretScrapeByBarcode(upc) {
+  const barcode = String(upc || "").trim();
+  if (!/^\d{8,14}$/.test(barcode)) return { found: false };
+  return lookupFatSecretScrape(
+    barcode,
+    barcode,
+    true,
+    (pageHtml) => pageHtml.includes(barcode),
+  );
+}
+
 async function lookupFatSecretNutrition(upc) {
   const normalizedUpc = String(upc || "").trim();
   const cached = getCachedFatSecretAnswer(normalizedUpc);
@@ -404,12 +418,10 @@ async function lookupFatSecretNutrition(upc) {
 
   const token = await getFatSecretToken();
   if (!token) {
-    if (shouldUseFatSecretScrapeFallback(normalizedUpc)) {
-      const scraped = await lookupFatSecretScrape(normalizedUpc, normalizedUpc);
-      if (scraped.found) {
-        setCachedFatSecretAnswer(normalizedUpc, scraped);
-        return scraped;
-      }
+    const scraped = await lookupFatSecretScrapeByBarcode(normalizedUpc);
+    if (scraped.found) {
+      setCachedFatSecretAnswer(normalizedUpc, scraped);
+      return scraped;
     }
     return { found: false };
   }
@@ -429,6 +441,11 @@ async function lookupFatSecretNutrition(upc) {
     const food = findResp.data?.food;
     if (!food || !food.food_id) {
       console.warn(`FatSecret barcode ${upc}: no food found, status=${findResp.status}`);
+      const scraped = await lookupFatSecretScrapeByBarcode(normalizedUpc);
+      if (scraped.found) {
+        setCachedFatSecretAnswer(normalizedUpc, scraped);
+        return scraped;
+      }
       return { found: false };
     }
     
@@ -479,6 +496,11 @@ async function lookupFatSecretNutrition(upc) {
     return result;
   } catch (e) {
     console.warn(`FatSecret Lookup Error for ${upc}:`, e.message);
+    const scraped = await lookupFatSecretScrapeByBarcode(normalizedUpc);
+    if (scraped.found) {
+      setCachedFatSecretAnswer(normalizedUpc, scraped);
+      return scraped;
+    }
     return { found: false };
   }
 }
@@ -509,14 +531,21 @@ async function searchFatSecretNutrition(query) {
           method: "foods.search",
           search_expression: query,
           format: "json",
-          max_results: 1,
+          max_results: 10,
         },
         headers: { Authorization: `Bearer ${token}` },
       },
     );
-    const foodId =
-      searchResp.data?.foods?.food?.food_id ||
-      searchResp.data?.foods?.food?.[0]?.food_id;
+
+    const searchFoods = searchResp.data?.foods?.food;
+    const searchList = Array.isArray(searchFoods)
+      ? searchFoods
+      : searchFoods
+        ? [searchFoods]
+        : [];
+
+    const firstFood = searchList.find((item) => item && (item.food_id || item.id)) || null;
+    const foodId = firstFood?.food_id || firstFood?.id || null;
     if (!foodId) {
       if (shouldUseFatSecretScrapeFallback(query)) {
         const scraped = await lookupFatSecretScrape(query, query);
@@ -1051,7 +1080,6 @@ app.get("/nutrition", async (req, res) => {
       ),
     );
 
-    let resolvedSearchTerm = searchTerm;
     if (upc) {
       for (const v of variants) {
         try {
@@ -1061,25 +1089,18 @@ app.get("/nutrition", async (req, res) => {
               found: true,
               food: fsResult.food,
               foodUrl: fsResult.food.food_url,
-              source: "FatSecret Barcode API",
+              source: fsResult.source || "FatSecret Barcode API",
             });
           }
         } catch (e) {}
       }
-    }
 
-    if (resolvedSearchTerm) {
-      const fsSearch = await searchFatSecretNutrition(resolvedSearchTerm);
-      if (fsSearch?.found && fsSearch?.food) {
-        return res.json({
-          found: true,
-          food: fsSearch.food,
-          foodUrl:
-            fsSearch.food.food_url ||
-            `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(resolvedSearchTerm)}`,
-          source: "FatSecret (Search by Product Name)",
-        });
-      }
+      return res.json({
+        found: false,
+        food: null,
+        foodUrl: `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(upc)}`,
+        source: "FatSecret only: barcode product not found",
+      });
     }
 
     if (searchTerm) {
@@ -1091,7 +1112,7 @@ app.get("/nutrition", async (req, res) => {
           foodUrl:
             fsSearch.food.food_url ||
             `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(searchTerm)}`,
-          source: "FatSecret (Search)",
+          source: "FatSecret (Search by Product Name)",
         });
       }
     }
