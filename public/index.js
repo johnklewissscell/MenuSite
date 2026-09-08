@@ -63,6 +63,7 @@ async function fetchOpenFoodFactsProduct(upc) {
     const result = {
       product_name: product.product_name || product.generic_name || "",
       brand_name: product.brands || "",
+      description: product.generic_name || product.description || product.ingredients_text || "",
       images: product.image_front_url ? [product.image_front_url] : [],
     };
     if (result.product_name) localStorage.setItem(`off-product-${upc}`, JSON.stringify(result));
@@ -95,11 +96,11 @@ async function loadMappings() {
         UPC: upc,
         TITLE: offProduct.product_name,
         BRAND: offProduct.brand_name || "",
-        DESCRIPTION: "",
+        DESCRIPTION: offProduct.description || "",
         IMAGES: offProduct.images?.[0] || "",
         name: toTitleCase(offProduct.product_name),
         brand: offProduct.brand_name || "",
-        description: "",
+        description: offProduct.description || "",
         productImg: offProduct.images?.[0] || "",
       };
 
@@ -138,11 +139,11 @@ async function loadMappings() {
           UPC: upc,
           TITLE: fallback.product_name,
           BRAND: fallback.brand_name || "",
-          DESCRIPTION: "",
+          DESCRIPTION: fallback.description || "",
           IMAGES: fallback.images?.[0] || "",
           name: toTitleCase(fallback.product_name),
           brand: fallback.brand_name || "",
-          description: "",
+          description: fallback.description || "",
           productImg: fallback.images?.[0] || "",
         };
       }
