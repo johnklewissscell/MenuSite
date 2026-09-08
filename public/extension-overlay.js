@@ -442,12 +442,18 @@
 
   async function renderMappings(obj) {
     const list = document.getElementById("ext-mappings-list");
+    const getCatalogProduct = (upc) => {
+      const loaded = (window.allProducts || []).find((product) => product.UPC === upc);
+      if (loaded) return { name: loaded.TITLE || loaded.name || "", brand: loaded.BRAND || loaded.brand || "" };
+      const catalog = window.productCatalog?.[upc];
+      return catalog ? { name: catalog[1], brand: catalog[0] } : { name: `UPC ${upc}`, brand: "" };
+    };
     const rows = Object.keys(obj || {}).sort((a, b) => {
       const getTitle = (upc) => {
         const mapping = obj[upc];
         const data = mapping?.data || mapping || {};
 
-        const name = data.product_name || data.title || data.food_name || "";
+        const name = data.product_name || data.title || data.food_name || getCatalogProduct(upc).name;
 
         return name.trim().toLowerCase();
       };
@@ -472,8 +478,8 @@
         mappingObj.product_name ||
         mappingObj.title ||
         mappingObj.food_name ||
-        "";
-      let brand = mappingObj.brands || mappingObj.brand_name || "";
+        getCatalogProduct(upc).name;
+      let brand = mappingObj.brands || mappingObj.brand_name || getCatalogProduct(upc).brand;
       const inserted = mappingObj._insertedAt || mapping._insertedAt || "";
       const expires = mappingObj._expiresAt || "";
       const tr = document.createElement("tr");
@@ -519,7 +525,7 @@
       };
       actionsCell.appendChild(btnDel);
       tbody.appendChild(tr);
-      if (!name) {
+      if (!name || name === `UPC ${upc}`) {
         (async function fill() {
           try {
             const res = await fetchJSONWithFallback(

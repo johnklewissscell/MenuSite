@@ -15,6 +15,8 @@ const PRODUCT_CATALOG = {
   "0030100215981": ["Kellogg's", "Scooby-Doo! Graham Cracker Snacks Cinnamon"],
 };
 
+if (typeof window !== "undefined") window.productCatalog = PRODUCT_CATALOG;
+
 function getApiBase() {
   return (typeof window !== "undefined" && window.MENU_API_URL) || "";
 }
