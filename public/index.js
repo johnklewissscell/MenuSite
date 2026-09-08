@@ -247,6 +247,23 @@ async function loadNutrition(item) {
   }
 }
 
+async function openFatSecretNutritionPage(item) {
+  const fallbackUrl = `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(item.UPC || item.name || "")}`;
+  const tab = window.open(fallbackUrl, "_blank", "noopener,noreferrer");
+  if (!tab) return;
+
+  try {
+    const response = await fetch(
+      getApiBase() + NUTRITION_PATH + "?" + new URLSearchParams({ upc: item.UPC }),
+    );
+    const data = response.ok ? await response.json() : null;
+    const productUrl = data?.foodUrl || data?.food?.food_url;
+    if (productUrl) tab.location.href = productUrl;
+  } catch (e) {
+    // Keep the UPC-specific FatSecret search page open when lookup is unavailable.
+  }
+}
+
 document.addEventListener("input", (e) => {
   if (e.target && e.target.id === "search-input") {
     const searchTerm = e.target.value.toLowerCase().trim();
@@ -390,13 +407,13 @@ function showPopup(item) {
   </div>
 
   <button id="nutrition-btn" style="background-color: #002855;">
-    View Nutrition
+    View Nutrition Facts
   </button>
 `;
 
   setTimeout(() => {
     document.getElementById("nutrition-btn").addEventListener("click", () => {
-      loadNutrition(item);
+      openFatSecretNutritionPage(item);
     });
   }, 0);
 
