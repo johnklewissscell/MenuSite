@@ -1,4 +1,4 @@
-const NUTRITION_API = "/nutrition";
+const NUTRITION_PATH = "/nutrition";
 
 function getApiBase() {
   return (typeof window !== "undefined" && window.MENU_API_URL) || "";
@@ -35,6 +35,26 @@ function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+async function fetchOpenFoodFactsProduct(upc) {
+  try {
+    const cached = JSON.parse(localStorage.getItem(`off-product-${upc}`) || "null");
+    if (cached?.product_name) return cached;
+    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${upc}.json`);
+    const data = await res.json();
+    const product = data && data.product;
+    if (!product) return null;
+    const result = {
+      product_name: product.product_name || product.generic_name || "",
+      brand_name: product.brands || "",
+      images: product.image_front_url ? [product.image_front_url] : [],
+    };
+    if (result.product_name) localStorage.setItem(`off-product-${upc}`, JSON.stringify(result));
+    return result;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function loadMappings() {
   const container = document.getElementById("menu-container");
 
@@ -42,7 +62,20 @@ async function loadMappings() {
     const mappings = await fetchJSONWithFallback("/mappings");
     const upcs = Object.keys(mappings || {}).reverse();
     
-    const productPromises = upcs.map(async (upc) => {
+    const loadProduct = async (upc) => {
+      const offProduct = await fetchOpenFoodFactsProduct(upc);
+      if (offProduct?.product_name) return {
+        UPC: upc,
+        TITLE: offProduct.product_name,
+        BRAND: offProduct.brand_name || "",
+        DESCRIPTION: "",
+        IMAGES: offProduct.images?.[0] || "",
+        name: toTitleCase(offProduct.product_name),
+        brand: offProduct.brand_name || "",
+        description: "",
+        productImg: offProduct.images?.[0] || "",
+      };
+
       try {
         const productRes = await fetchJSONWithFallback(`/product?upc=${upc}`);
         let p = {};
@@ -50,14 +83,11 @@ async function loadMappings() {
           p = productRes.product;
         } else {
           const manual = mappings[upc];
-          if (manual && manual.data) {
-            p = manual.data;
-          } else {
-            return null; // Skip this item if no data found
-          }
+          if (manual?.data?.product_name || manual?.data?.title || manual?.data?.food_name) p = manual.data;
+          else return { UPC: upc, TITLE: `UPC ${upc}`, BRAND: "", IMAGES: "", name: `UPC ${upc}`, brand: "", description: "", productImg: "" };
         }
         
-        const title = p.product_name || p.title || p.food_name || "Unknown";
+        const title = p.product_name || p.title || p.food_name || `UPC ${upc}`;
         const brand = p.brands || p.brand_name || "";
         const desc = p.description || p.generic_name || "";
         const img = (p.images && p.images.length && p.images[0]) || p.image || "";
@@ -75,11 +105,25 @@ async function loadMappings() {
         };
       } catch (e) {
         console.error(`Failed to load product for UPC ${upc}:`, e.message);
-        return null;
+        const fallback = await fetchOpenFoodFactsProduct(upc);
+        if (!fallback?.product_name) return null;
+        return {
+          UPC: upc,
+          TITLE: fallback.product_name,
+          BRAND: fallback.brand_name || "",
+          DESCRIPTION: "",
+          IMAGES: fallback.images?.[0] || "",
+          name: toTitleCase(fallback.product_name),
+          brand: fallback.brand_name || "",
+          description: "",
+          productImg: fallback.images?.[0] || "",
+        };
       }
-    });
+    };
+
+    const productResults = await Promise.all(upcs.map(loadProduct));
     
-    const items = (await Promise.all(productPromises)).filter(Boolean).sort((a, b) =>
+    const items = productResults.filter(Boolean).sort((a, b) =>
       a.name.localeCompare(b.name, undefined, {
         sensitivity: "base",
       }),
@@ -135,7 +179,7 @@ async function loadNutrition(item) {
       upc: item.UPC,
     });
 
-    let res = await fetch(NUTRITION_API + "?" + params.toString());
+    let res = await fetch(getApiBase() + NUTRITION_PATH + "?" + params.toString());
 
     let data = null;
     if (res.ok) {
@@ -158,7 +202,7 @@ async function loadNutrition(item) {
         brand: item.brand || "",
       });
 
-      res = await fetch(NUTRITION_API + "?" + params.toString());
+      res = await fetch(getApiBase() + NUTRITION_PATH + "?" + params.toString());
       data = res.ok ? await res.json() : { found: false };
 
       if (data && data.found && data.food) {

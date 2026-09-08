@@ -426,13 +426,15 @@ async function lookupFatSecretNutrition(upc) {
     return { found: false };
   }
   try {
-    const findResp = await axios.post(
+    const findResp = await axios.get(
       "https://platform.fatsecret.com/rest/food/barcode/find-by-id/v2",
-      { barcode: upc },
       {
+        params: {
+          barcode: normalizedUpc,
+          format: "json",
+        },
         headers: {
           Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
         },
         timeout: 10000,
       },
