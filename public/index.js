@@ -1,18 +1,18 @@
 const NUTRITION_PATH = "/nutrition";
 
 const PRODUCT_CATALOG = {
-  "0028400042437": ["Doritos", "Reduced Fat Nacho Cheese Flavored Tortilla Chips"],
-  "0016571954369": ["Sparkling Ice", "Fruit Punch Sparkling Water"],
-  "0041900072827": ["TruMoo", "Chocolate Fat Free Milk"],
-  "0028400239349": ["Lay's", "Kettle Cooked Potato Chips"],
-  "0016571959203": ["Sparkling Ice", "Sparkling Ice"],
-  "0016571940355": ["Sparkling Ice", "Classic Lemonade Flavored Sparkling Water"],
-  "0028400243063": ["Lay's", "Kettle Cooked Jalapeno Cheddar Flavored Potato Chips"],
-  "0076183003145": ["Bluetriton Brands", "Pure Life"],
-  "0853004004952": ["Core", "Nutrient Enhanced Water"],
-  "0000006827465": ["Snapple", "Peach Tea"],
-  "0025293001398": ["Silk", "Very Vanilla Soymilk, Single Serve"],
-  "0030100215981": ["Kellogg's", "Scooby-Doo! Graham Cracker Snacks Cinnamon"],
+  "0028400042437": ["Doritos", "Reduced Fat Nacho Cheese Flavored Tortilla Chips", "https://foods.fatsecret.com/calories-nutrition/doritos/reduced-fat-nacho-cheese"],
+  "0016571954369": ["Sparkling Ice", "Fruit Punch Sparkling Water", "https://foods.fatsecret.com/calories-nutrition/talking-rain/sparkling-ice---black-raspberry"],
+  "0041900072827": ["TruMoo", "Chocolate Fat Free Milk", "https://foods.fatsecret.com/calories-nutrition/trumoo/chocolate-fat-free-milk"],
+  "0028400239349": ["Lay's", "Kettle Cooked Potato Chips", "https://foods.fatsecret.com/calories-nutrition/lays/kettle-cooked-original-40%25-less-fat"],
+  "0016571959203": ["Sparkling Ice", "Sparkling Ice", "https://foods.fatsecret.com/calories-nutrition/talking-rain/sparkling-ice-orange-mango-(bottle)"],
+  "0016571940355": ["Sparkling Ice", "Classic Lemonade Flavored Sparkling Water", "https://foods.fatsecret.com/calories-nutrition/talking-rain/sparkling-ice-lemonade-(bottle)"],
+  "0028400243063": ["Lay's", "Kettle Cooked Jalapeno Cheddar Flavored Potato Chips", "https://foods.fatsecret.com/calories-nutrition/lays/kettle-cooked-jalapeño-cheddar-potato-chips"],
+  "0076183003145": ["Bluetriton Brands", "Pure Life", "https://foods.fatsecret.com/calories-nutrition/snapple/diet-peach-iced-tea-(16-oz)"],
+  "0853004004952": ["Core", "Nutrient Enhanced Water", "https://foods.fatsecret.com/calories-nutrition/core/core-hydration"],
+  "0000006827465": ["Snapple", "Peach Tea", "https://foods.fatsecret.com/calories-nutrition/nestle/pure-life-purified-water-(bottle)"],
+  "0025293001398": ["Silk", "Very Vanilla Soymilk, Single Serve", "https://foods.fatsecret.com/calories-nutrition/silk/very-vanilla-soymilk"],
+  "0030100215981": ["Kellogg's", "Scooby-Doo! Graham Cracker Snacks Cinnamon", "https://foods.fatsecret.com/calories-nutrition/keebler/scooby-doo-baked-cinnamon-graham-cracker-sticks"],
 };
 
 if (typeof window !== "undefined") window.productCatalog = PRODUCT_CATALOG;
@@ -248,8 +248,10 @@ async function loadNutrition(item) {
 }
 
 async function openFatSecretNutritionPage(item) {
-  const fallbackUrl = `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(item.UPC || item.name || "")}`;
+  const catalogUrl = PRODUCT_CATALOG[item.UPC]?.[2];
+  const fallbackUrl = catalogUrl || `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(item.UPC || item.name || "")}`;
   const tab = window.open(fallbackUrl, "_blank", "noopener,noreferrer");
+  if (catalogUrl) return;
   if (!tab) return;
 
   try {
