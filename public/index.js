@@ -1,5 +1,20 @@
 const NUTRITION_PATH = "/nutrition";
 
+const PRODUCT_CATALOG = {
+  "0028400042437": ["Doritos", "Reduced Fat Nacho Cheese Flavored Tortilla Chips"],
+  "0016571954369": ["Sparkling Ice", "Fruit Punch Sparkling Water"],
+  "0041900072827": ["TruMoo", "Chocolate Fat Free Milk"],
+  "0028400239349": ["Lay's", "Kettle Cooked Potato Chips"],
+  "0016571959203": ["Sparkling Ice", "Sparkling Ice"],
+  "0016571940355": ["Sparkling Ice", "Classic Lemonade Flavored Sparkling Water"],
+  "0028400243063": ["Lay's", "Kettle Cooked Jalapeno Cheddar Flavored Potato Chips"],
+  "0076183003145": ["Bluetriton Brands", "Pure Life"],
+  "0853004004952": ["Core", "Nutrient Enhanced Water"],
+  "0000006827465": ["Snapple", "Peach Tea"],
+  "0025293001398": ["Silk", "Very Vanilla Soymilk, Single Serve"],
+  "0030100215981": ["Kellogg's", "Scooby-Doo! Graham Cracker Snacks Cinnamon"],
+};
+
 function getApiBase() {
   return (typeof window !== "undefined" && window.MENU_API_URL) || "";
 }
@@ -61,6 +76,16 @@ async function loadMappings() {
   try {    
     const mappings = await fetchJSONWithFallback("/mappings");
     const upcs = Object.keys(mappings || {}).reverse();
+
+    const instantItems = upcs.map((upc) => {
+      const catalog = PRODUCT_CATALOG[upc];
+      if (!catalog) return null;
+      const [brand, title] = catalog;
+      return { UPC: upc, TITLE: title, BRAND: brand, DESCRIPTION: "", IMAGES: "", name: title, brand, description: "", productImg: "" };
+    }).filter(Boolean);
+    allProducts = instantItems;
+    window.allProducts = allProducts;
+    renderProducts(allProducts);
     
     const loadProduct = async (upc) => {
       const offProduct = await fetchOpenFoodFactsProduct(upc);
