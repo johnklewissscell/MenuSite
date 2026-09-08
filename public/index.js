@@ -409,16 +409,10 @@ function showPopup(item) {
     <p>${item.description || "No description available."}</p>
   </div>
 
-  <button id="nutrition-btn" style="background-color: #002855;">
+  <a id="nutrition-btn" class="ext-btn" style="display:inline-block;background-color:#002855;color:#fff;text-decoration:none;" href="${PRODUCT_CATALOG[item.UPC]?.[2] || `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(item.UPC || item.name || "")}`}" target="_blank" rel="noopener noreferrer">
     View Nutrition Facts
-  </button>
+  </a>
 `;
-
-  setTimeout(() => {
-    document.getElementById("nutrition-btn").addEventListener("click", () => {
-      openFatSecretNutritionPage(item);
-    });
-  }, 0);
 
   popup.classList.remove("hidden");
 }
