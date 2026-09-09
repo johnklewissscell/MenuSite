@@ -1215,26 +1215,28 @@ app.delete("/mappings", (req, res) => {
   return res.json({ ok: true });
 });
 
-let PORT = Number(process.env.PORT) || 3001;
-let listeningFlag = false;
+let PORT = Number(process.env.PORT) || 3000;
 let server = null;
 
 function startServer(port) {
   server = app.listen(port, "0.0.0.0", () => {
-    listeningFlag = true;
-    console.log("Server running on http://0.0.0.0:" + port);
+    console.log(`Server running on http://0.0.0.0:${port}`);
   });
 
   server.on("error", (err) => {
     if (err.code === "EADDRINUSE") {
-      console.log(`Port ${port} is in use, trying ${port + 1}...`);
-      server.close();
-      startServer(port + 1);
+      console.error(`Port ${port} is in use. Exiting process so process manager can restart.`);
+      process.exit(1); // Force process to restart cleanly instead of changing ports
     } else {
       console.error("SERVER ERROR:", err.message);
       process.exit(1);
     }
   });
+}
+
+// Only start the server if called directly (not imported during tests)
+if (require.main === module) {
+  startServer(PORT);
 }
 
 if (require.main === module) {
