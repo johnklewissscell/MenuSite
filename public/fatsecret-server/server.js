@@ -997,10 +997,11 @@ app.get("/product", async (req, res) => {
 // Convert Open Food Facts nutrition data to the popup's nutrition format.
 function convertOFFNutrition(product, searchTerm = "") {
   if (!product) return createGenericNutrition(searchTerm);
+
   try {
     const nutriments = product.nutriments || {};
 
-    // Helper to check for per-serving fields first, then per-100g fields
+    // Helper to search per-serving data first, then fall back to 100g data
     const getNutrient = (key) => {
       const val = nutriments[`${key}_serving`] ?? nutriments[key];
       return val !== undefined && val !== null ? Number(val) : undefined;
@@ -1013,16 +1014,17 @@ function convertOFFNutrition(product, searchTerm = "") {
       calories: Math.round(getNutrient("energy-kcal") ?? 0),
       fat: Math.round(getNutrient("fat") ?? 0),
       saturated_fat: Math.round(getNutrient("saturated-fat") ?? 0),
-      trans_fat: getNutrient("trans-fat") !== undefined ? Math.round(getNutrient("trans-fat")) : 0,
+      trans_fat: Math.round(getNutrient("trans-fat") ?? 0),
       carbohydrate: Math.round(getNutrient("carbohydrates") ?? 0),
       sugar: Math.round(getNutrient("sugars") ?? 0),
       protein: Math.round(getNutrient("proteins") ?? 0),
       sodium: Math.round((getNutrient("sodium") ?? 0) * 1000), // convert g to mg
       fiber: Math.round(getNutrient("fiber") ?? 0),
-      cholesterol: getNutrient("cholesterol") !== undefined ? Math.round(getNutrient("cholesterol") * 1000) : 0, // convert g to mg
-      calcium: getNutrient("calcium") !== undefined ? Math.round(getNutrient("calcium") * 1000) : undefined, // mg
-      iron: getNutrient("iron") !== undefined ? Math.round(getNutrient("iron") * 1000) : undefined, // mg
-      potassium: getNutrient("potassium") !== undefined ? Math.round(getNutrient("potassium") * 1000) : undefined, // mg
+      cholesterol: Math.round((getNutrient("cholesterol") ?? 0) * 1000), // convert g to mg
+      calcium: Math.round((getNutrient("calcium") ?? 0) * 1000), // convert g to mg
+      iron: Math.round((getNutrient("iron") ?? 0) * 1000), // convert g to mg
+      potassium: Math.round((getNutrient("potassium") ?? 0) * 1000), // convert g to mg
+      vitamin_d: Math.round((getNutrient("vitamin-d") ?? 0) * 1000000), // convert g to mcg
       is_default: "1",
     };
 
