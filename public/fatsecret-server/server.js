@@ -999,22 +999,34 @@ function convertOFFNutrition(product, searchTerm = "") {
   if (!product) return createGenericNutrition(searchTerm);
   try {
     const nutriments = product.nutriments || {};
+
+    // Helper to check for per-serving fields first, then per-100g fields
+    const getNutrient = (key) => {
+      const val = nutriments[`${key}_serving`] ?? nutriments[key];
+      return val !== undefined && val !== null ? Number(val) : undefined;
+    };
+
     const serving = {
       serving_description: product.serving_size
         ? `${product.serving_size}${product.serving_size_unit || ""}`
         : "per 100g",
-      calories: Math.round(
-        product.energy_kcal || nutriments["energy-kcal"] || 0,
-      ),
-      fat: Math.round(nutriments.fat || 0),
-      saturated_fat: Math.round(nutriments["saturated-fat"] || 0),
-      carbohydrate: Math.round(nutriments.carbohydrates || 0),
-      sugar: Math.round(nutriments.sugars || 0),
-      protein: Math.round(nutriments.proteins || 0),
-      sodium: Math.round((nutriments.sodium || 0) * 1000), // convert g to mg
-      fiber: Math.round(nutriments.fiber || 0),
+      calories: Math.round(getNutrient("energy-kcal") ?? 0),
+      fat: Math.round(getNutrient("fat") ?? 0),
+      saturated_fat: Math.round(getNutrient("saturated-fat") ?? 0),
+      trans_fat: getNutrient("trans-fat") !== undefined ? Math.round(getNutrient("trans-fat")) : 0,
+      carbohydrate: Math.round(getNutrient("carbohydrates") ?? 0),
+      sugar: Math.round(getNutrient("sugars") ?? 0),
+      protein: Math.round(getNutrient("proteins") ?? 0),
+      sodium: Math.round((getNutrient("sodium") ?? 0) * 1000), // convert g to mg
+      fiber: Math.round(getNutrient("fiber") ?? 0),
+      cholesterol: getNutrient("cholesterol") !== undefined ? Math.round(getNutrient("cholesterol") * 1000) : 0, // convert g to mg
+      calcium: getNutrient("calcium") !== undefined ? Math.round(getNutrient("calcium") * 1000) : undefined, // mg
+      iron: getNutrient("iron") !== undefined ? Math.round(getNutrient("iron") * 1000) : undefined, // mg
+      potassium: getNutrient("potassium") !== undefined ? Math.round(getNutrient("potassium") * 1000) : undefined, // mg
+      is_default: "1",
     };
-    const result = {
+
+    return {
       food_id: product.code || "off-" + Date.now(),
       food_name: product.product_name || searchTerm || "Unknown Product",
       food_type: "user food",
@@ -1023,13 +1035,6 @@ function convertOFFNutrition(product, searchTerm = "") {
         serving: [serving],
       },
     };
-    console.log(
-      "Converted OFF product:",
-      result.food_name,
-      "calories:",
-      serving.calories,
-    );
-    return result;
   } catch (e) {
     console.error("Error converting Open Food Facts nutrition:", e.message);
     return createGenericNutrition(searchTerm);
@@ -1037,30 +1042,36 @@ function convertOFFNutrition(product, searchTerm = "") {
 }
 
 // Fallback generic nutrition when no data available
-function createGenericNutrition(productName = "Product") {
+function createGenericNutrition(productName = "Product", overrides = {}) {
   return {
     food_id: "generic-" + Date.now(),
     food_name: productName || "Unknown Product",
     food_type: "generic food",
-    brand_name: "",
+    brand_name: overrides.brand_name || "",
     servings: {
       serving: [
         {
-          serving_description: "per serving",
-          calories: 0,
-          fat: 0,
-          saturated_fat: 0,
-          carbohydrate: 0,
-          sugar: 0,
-          protein: 0,
-          sodium: 0,
-          fiber: 0,
+          serving_description: overrides.serving_description || "1 serving",
+          calories: overrides.calories ?? 0,
+          fat: overrides.fat ?? 0,
+          saturated_fat: overrides.saturated_fat ?? 0,
+          trans_fat: overrides.trans_fat ?? 0,
+          carbohydrate: overrides.carbohydrate ?? 0,
+          sugar: overrides.sugar ?? 0,
+          protein: overrides.protein ?? 0,
+          sodium: overrides.sodium ?? 0,
+          fiber: overrides.fiber ?? 0,
+          cholesterol: overrides.cholesterol ?? 0,
+          potassium: overrides.potassium ?? 0,
+          calcium: overrides.calcium ?? 0,
+          iron: overrides.iron ?? 0,
+          vitamin_d: overrides.vitamin_d ?? 0,
+          is_default: "1",
         },
       ],
     },
   };
 }
-
 
 app.get("/nutrition", async (req, res) => {
   const upc = (req.query.upc || req.query.barcode || "").trim();
