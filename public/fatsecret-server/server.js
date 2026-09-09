@@ -1069,71 +1069,30 @@ app.get("/nutrition", async (req, res) => {
   const searchTerm = `${brand} ${name}`.trim();
 
   try {
-    // Check saved mappings first
-    if (upc && mappings[upc]) {
-      return res.json({
-        found: true,
-        food: mappings[upc].data,
-        foodUrl: mappings[upc].data.food_url || null,
-        source: `Local Mapping (${mappings[upc].source})`,
-      });
-    }
-
     if (upc) {
-      const variants = Array.from(
-        new Set(
-          [
-            upc,
-            upc.replace(/^0+/, ""),
-            upc.slice(-12),
-            upc.padStart(12, "0"),
-            upc.padStart(13, "0"),
-            upc.padStart(14, "0"),
-          ].filter(Boolean)
-        )
-      );
-
-      // 1. FatSecret Barcode Search
-      for (const v of variants) {
-        try {
-          const fsResult = await lookupFatSecretNutrition(v);
-          if (fsResult?.found && fsResult?.food?.servings) {
-            return res.json({
-              found: true,
-              food: fsResult.food,
-              foodUrl: fsResult.food.food_url,
-              source: fsResult.source || "FatSecret Barcode API",
-            });
-          }
-        } catch (e) {}
+      // 1. Format UPC strictly to GTIN-13 for FatSecret
+      const gtin13 = upc.replace(/\D/g, "").padStart(13, "0");
+      
+      const fsResult = await lookupFatSecretNutrition(gtin13);
+      if (fsResult?.found && fsResult?.food?.servings) {
+        return res.json({
+          found: true,
+          food: fsResult.food,
+          foodUrl: fsResult.food.food_url || `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(upc)}`,
+          source: fsResult.source || "FatSecret Barcode API",
+        });
       }
 
-      // 2. OpenFoodFacts Barcode Fallback
-      try {
-        const offResponse = await fetch(`https://world.openfoodfacts.org/api/v0/product/${upc}.json`);
-        const offData = await offResponse.json();
-        if (offData?.status === 1 && offData?.product) {
-          const offFood = convertOFFNutrition(offData.product, searchTerm);
-          return res.json({
-            found: true,
-            food: offFood,
-            foodUrl: offData.product.url || null,
-            source: "Open Food Facts",
-          });
-        }
-      } catch (e) {
-        console.warn("OFF lookup failed:", e.message);
-      }
-
+      // If missing in FatSecret, return found: false without falling back to OFF
       return res.json({
         found: false,
-        food: createGenericNutrition(searchTerm || upc),
+        food: null,
         foodUrl: `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(upc)}`,
-        source: "Barcode not found in FatSecret or OFF",
+        source: "FatSecret: Product not found for GTIN " + gtin13,
       });
     }
 
-    // 3. Name Search Fallback
+    // 2. Name Search via FatSecret
     if (searchTerm) {
       const fsSearch = await searchFatSecretNutrition(searchTerm);
       if (fsSearch?.found && fsSearch?.food) {
@@ -1143,24 +1102,23 @@ app.get("/nutrition", async (req, res) => {
           foodUrl:
             fsSearch.food.food_url ||
             `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(searchTerm)}`,
-          source: "FatSecret (Search by Product Name)",
+          source: "FatSecret Search",
         });
       }
     }
 
     return res.json({
       found: false,
-      food: createGenericNutrition(searchTerm),
-      foodUrl: `https://platform.fatsecret.com/api-demo#barcode-api`,
-      source: "No barcode or search term provided",
+      food: null,
+      foodUrl: "https://platform.fatsecret.com/api-demo#barcode-api",
+      source: "FatSecret: No matching product found",
     });
   } catch (e) {
-    console.error("Critical nutrition endpoint error:", e.message);
-    return res.json({
+    console.error("FatSecret Lookup Error:", e.message);
+    return res.status(500).json({
       found: false,
-      food: createGenericNutrition(searchTerm),
-      foodUrl: `https://platform.fatsecret.com/api-demo#barcode-api`,
-      source: "Internal processing error",
+      error: e.message,
+      source: "FatSecret API Failure",
     });
   }
 });
