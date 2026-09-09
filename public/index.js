@@ -290,94 +290,149 @@ function showNutritionPopup(food) {
   let serving = null;
 
   if (food.servings && food.servings.serving) {
-    const servings = Array.isArray(food.servings.serving) ? food.servings.serving : [food.servings.serving];
-    // Find the default serving size (matches the FatSecret product page)
+    const servings = Array.isArray(food.servings.serving) 
+      ? food.servings.serving 
+      : [food.servings.serving];
     serving = servings.find(s => s.is_default === "1") || servings[0];
   }
 
+  // Format helper for null/undefined fields
   const formatVal = (val, unit = "") => {
-    if (val === undefined || val === null || val === "") return "N/A";
-    return val + unit;
+    if (val === undefined || val === null || val === "" || isNaN(Number(val))) {
+      return "-";
+    }
+    return `${parseFloat(val)}${unit}`;
+  };
+
+  // Format helper for Daily Values (%)
+  const formatDV = (val) => {
+    if (val === undefined || val === null || val === "" || isNaN(Number(val))) {
+      return "";
+    }
+    return `${Math.round(Number(val))}%`;
   };
 
   const html = `
-
-    <div class="nutrition-container">
-
-      <div class="nutrition-brand">
-            ${food.brand_name || food.brands || ""}
-          </div>
-      <div style="font-size: 10px; color: #666; margin-bottom: 5px;">
-        Source: FatSecret Platform API
+    <div class="nutrition-label">
+      <h1 class="label-title">Nutrition Facts</h1>
+      <div class="label-divider thick"></div>
+      
+      <div class="label-row serving-size">
+        <span class="bold">Serving Size</span>
+        <span>${serving?.serving_description || serving?.metric_serving_amount ? `${serving?.metric_serving_amount}${serving?.metric_serving_unit}` : "1 serving"}</span>
       </div>
-
-      <hr>
-
-      <div class="nutrition-row">
-        <span>Serving</span>
-        <span>
-          ${serving?.serving_description || "N/A"}
-        </span>
+      <div class="label-divider medium"></div>
+      
+      <div class="label-header">Amount Per Serving</div>
+      <div class="label-row calories-row">
+        <span class="bold calories-title">Calories</span>
+        <span class="calories-val">${formatVal(serving?.calories)}</span>
       </div>
-
-      <div class="nutrition-row calories">
-        <span>Calories</span>
-        <span>
-          ${formatVal(serving?.calories)}
-        </span>
+      <div class="label-divider medium"></div>
+      
+      <div class="label-row dv-header">
+        <span class="bold-right">% Daily Value*</span>
       </div>
+      <div class="label-divider thin"></div>
 
-      <hr>
-
-      <div class="nutrition-row">
-        <span>Total Fat</span>
-        <span>
-          ${formatVal(serving?.fat - ".00", "g")}
-        </span>
+      <!-- Total Fat -->
+      <div class="label-row">
+        <span><strong class="bold">Total Fat</strong> ${formatVal(serving?.fat, "g")}</span>
+        <span class="bold">${formatDV(serving?.fat_dv || (serving?.fat ? (serving.fat / 78) * 100 : null))}</span>
       </div>
+      <div class="label-divider thin"></div>
 
-      <div class="nutrition-row">
-        <span>Saturated Fat</span>
-        <span>
-          ${formatVal(serving?.saturated_fat - ".00", "g")}
-        </span>
+      <!-- Saturated Fat -->
+      <div class="label-row indent">
+        <span>Saturated Fat ${formatVal(serving?.saturated_fat, "g")}</span>
+        <span class="bold">${formatDV(serving?.saturated_fat_dv)}</span>
       </div>
+      <div class="label-divider thin"></div>
 
-      <div class="nutrition-row">
-        <span>Carbohydrates</span>
-        <span>
-          ${formatVal(serving?.carbohydrate - ".00", "g")}
-        </span>
+      <!-- Trans Fat -->
+      <div class="label-row indent">
+        <span><em>Trans</em> Fat ${formatVal(serving?.trans_fat, "g")}</span>
+        <span></span>
       </div>
+      <div class="label-divider thin"></div>
 
-      <div class="nutrition-row">
-        <span>Sugar</span>
-        <span>
-          ${formatVal(serving?.sugar - ".00", "g")}
-        </span>
+      <!-- Cholesterol -->
+      <div class="label-row">
+        <span><strong class="bold">Cholesterol</strong> ${formatVal(serving?.cholesterol, "mg")}</span>
+        <span class="bold">${formatDV(serving?.cholesterol_dv)}</span>
       </div>
+      <div class="label-divider thin"></div>
 
-      <div class="nutrition-row">
-        <span>Protein</span>
-        <span>
-          ${formatVal(serving?.protein - ".00", "g")}
-        </span>
+      <!-- Sodium -->
+      <div class="label-row">
+        <span><strong class="bold">Sodium</strong> ${formatVal(serving?.sodium, "mg")}</span>
+        <span class="bold">${formatDV(serving?.sodium_dv || (serving?.sodium ? (serving.sodium / 2300) * 100 : null))}</span>
       </div>
+      <div class="label-divider thin"></div>
 
-      <div class="nutrition-row">
-        <span>Sodium</span>
-        <span>
-          ${formatVal(serving?.sodium, "mg")}
-        </span>
+      <!-- Total Carbohydrate -->
+      <div class="label-row">
+        <span><strong class="bold">Total Carbohydrate</strong> ${formatVal(serving?.carbohydrate, "g")}</span>
+        <span class="bold">${formatDV(serving?.carbohydrate_dv || (serving?.carbohydrate ? (serving.carbohydrate / 275) * 100 : null))}</span>
       </div>
+      <div class="label-divider thin"></div>
 
-      <div class="nutrition-link">
-        <a href="${food.food_url || `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(food.brand_name || '')} ${encodeURIComponent(food.food_name || '')}`}"
-           target="_blank" rel="noopener noreferrer">
-          View Full Nutrition Facts
-        </a>
+      <!-- Dietary Fiber -->
+      <div class="label-row indent">
+        <span>Dietary Fiber ${formatVal(serving?.fiber, "g")}</span>
+        <span class="bold">${formatDV(serving?.fiber_dv)}</span>
       </div>
+      <div class="label-divider thin"></div>
 
+      <!-- Total Sugars -->
+      <div class="label-row indent">
+        <span>Total Sugars ${formatVal(serving?.sugar, "g")}</span>
+        <span></span>
+      </div>
+      <div class="label-divider thin"></div>
+
+      <!-- Added Sugars -->
+      <div class="label-row double-indent">
+        <span>Includes ${formatVal(serving?.added_sugars, "g")} Added Sugars</span>
+        <span class="bold">${formatDV(serving?.added_sugars_dv)}</span>
+      </div>
+      <div class="label-divider thin"></div>
+
+      <!-- Protein -->
+      <div class="label-row">
+        <span><strong class="bold">Protein</strong> ${formatVal(serving?.protein, "g")}</span>
+        <span></span>
+      </div>
+      <div class="label-divider medium"></div>
+
+      <!-- Vitamins & Minerals -->
+      <div class="label-row">
+        <span>Vitamin D ${formatVal(serving?.vitamin_d, "mcg")}</span>
+        <span>${formatDV(serving?.vitamin_d_dv)}</span>
+      </div>
+      <div class="label-divider thin"></div>
+
+      <div class="label-row">
+        <span>Calcium ${formatVal(serving?.calcium, "mg")}</span>
+        <span>${formatDV(serving?.calcium_dv)}</span>
+      </div>
+      <div class="label-divider thin"></div>
+
+      <div class="label-row">
+        <span>Iron ${formatVal(serving?.iron, "mg")}</span>
+        <span>${formatDV(serving?.iron_dv)}</span>
+      </div>
+      <div class="label-divider thin"></div>
+
+      <div class="label-row">
+        <span>Potassium ${formatVal(serving?.potassium, "mg")}</span>
+        <span>${formatDV(serving?.potassium_dv)}</span>
+      </div>
+      <div class="label-divider medium"></div>
+
+      <p class="label-footnote">
+        * The % Daily Value (DV) tells you how much a nutrient in a serving of food contributes to a daily diet. 2,000 calories a day is used for general nutrition advice.
+      </p>
     </div>
   `;
 
@@ -387,32 +442,36 @@ function showNutritionPopup(food) {
 function showPopup(item) {
   const popup = document.getElementById("popup");
   const details = document.getElementById("popup-details");
-  const placeholder =
-    "https://placehold.jp/24/cccccc/ffffff/300x300.png?text=No+Image+Available";
+  const placeholder = "https://placehold.jp/24/cccccc/ffffff/300x300.png?text=No+Image+Available";
 
-  const cleanProdImg =
-    item.productImg && item.productImg !== "undefined"
-      ? item.productImg.split("^")[0].trim()
-      : placeholder;
+  const cleanProdImg = item.productImg && item.productImg !== "undefined"
+    ? item.productImg.split("^")[0].trim()
+    : placeholder;
 
   document.getElementById("popup-title").innerText = toTitleCase(item.name);
 
   details.innerHTML = `
-  <div class="popup-image-container">
-    <img src="${cleanProdImg}" onerror="this.src='${placeholder}';">
-  </div>
+    <div class="popup-image-container">
+      <img src="${cleanProdImg}" onerror="this.src='${placeholder}';">
+    </div>
 
-  <div class="popup-brand">${item.brand || ""}</div>
+    <div class="popup-brand">${item.brand || ""}</div>
 
-  <div class="popup-description">
-    <strong>Description:</strong>
-    <p>${item.description || "No description available."}</p>
-  </div>
+    <div class="popup-description">
+      <strong>Description:</strong>
+      <p>${item.description || "No description available."}</p>
+    </div>
 
-  <a id="nutrition-btn" class="ext-btn" style="display:inline-block;background-color:#002855;color:#fff;text-decoration:none;" href="${PRODUCT_CATALOG[item.UPC]?.[2] || `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(item.UPC || item.name || "")}`}" target="_blank" rel="noopener noreferrer">
-    View Nutrition Facts
-  </a>
-`;
+    <button id="nutrition-btn" class="ext-btn" style="background-color:#002855;color:#fff;border:none;padding:10px 16px;cursor:pointer;border-radius:4px;width:100%;">
+      View Nutrition Facts
+    </button>
+  `;
+
+  // Attach dynamic listener to fetch and display label on click
+  document.getElementById("nutrition-btn").onclick = () => {
+    document.getElementById("popup-details").innerHTML = "<p style='text-align:center;'>Loading Nutrition Facts...</p>";
+    loadNutrition(item);
+  };
 
   popup.classList.remove("hidden");
 }
