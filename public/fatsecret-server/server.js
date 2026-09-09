@@ -1069,24 +1069,35 @@ app.get("/nutrition", async (req, res) => {
   const searchTerm = `${brand} ${name}`.trim();
 
   try {
-    const variants = Array.from(
-      new Set(
-        [
-          upc,
-          upc.replace(/^0+/, ""),
-          upc.slice(-12),
-          upc.padStart(12, "0"),
-          upc.padStart(13, "0"),
-          upc.padStart(14, "0"),
-        ].filter(Boolean),
-      ),
-    );
+    // Check saved mappings first
+    if (upc && mappings[upc]) {
+      return res.json({
+        found: true,
+        food: mappings[upc].data,
+        foodUrl: mappings[upc].data.food_url || null,
+        source: `Local Mapping (${mappings[upc].source})`,
+      });
+    }
 
     if (upc) {
+      const variants = Array.from(
+        new Set(
+          [
+            upc,
+            upc.replace(/^0+/, ""),
+            upc.slice(-12),
+            upc.padStart(12, "0"),
+            upc.padStart(13, "0"),
+            upc.padStart(14, "0"),
+          ].filter(Boolean)
+        )
+      );
+
+      // 1. FatSecret Barcode Search
       for (const v of variants) {
         try {
           const fsResult = await lookupFatSecretNutrition(v);
-          if (fsResult?.found && fsResult?.food && fsResult.food.servings) {
+          if (fsResult?.found && fsResult?.food?.servings) {
             return res.json({
               found: true,
               food: fsResult.food,
@@ -1097,14 +1108,32 @@ app.get("/nutrition", async (req, res) => {
         } catch (e) {}
       }
 
+      // 2. OpenFoodFacts Barcode Fallback
+      try {
+        const offResponse = await fetch(`https://world.openfoodfacts.org/api/v0/product/${upc}.json`);
+        const offData = await offResponse.json();
+        if (offData?.status === 1 && offData?.product) {
+          const offFood = convertOFFNutrition(offData.product, searchTerm);
+          return res.json({
+            found: true,
+            food: offFood,
+            foodUrl: offData.product.url || null,
+            source: "Open Food Facts",
+          });
+        }
+      } catch (e) {
+        console.warn("OFF lookup failed:", e.message);
+      }
+
       return res.json({
         found: false,
-        food: null,
+        food: createGenericNutrition(searchTerm || upc),
         foodUrl: `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(upc)}`,
-        source: "FatSecret only: barcode product not found",
+        source: "Barcode not found in FatSecret or OFF",
       });
     }
 
+    // 3. Name Search Fallback
     if (searchTerm) {
       const fsSearch = await searchFatSecretNutrition(searchTerm);
       if (fsSearch?.found && fsSearch?.food) {
@@ -1121,17 +1150,17 @@ app.get("/nutrition", async (req, res) => {
 
     return res.json({
       found: false,
-      food: null,
+      food: createGenericNutrition(searchTerm),
       foodUrl: `https://platform.fatsecret.com/api-demo#barcode-api`,
-      source: "FatSecret only: barcode lookup blocked or product not found",
+      source: "No barcode or search term provided",
     });
   } catch (e) {
     console.error("Critical nutrition endpoint error:", e.message);
     return res.json({
       found: false,
-      food: null,
+      food: createGenericNutrition(searchTerm),
       foodUrl: `https://platform.fatsecret.com/api-demo#barcode-api`,
-      source: "FatSecret only: barcode lookup blocked or product not found",
+      source: "Internal processing error",
     });
   }
 });
@@ -1201,6 +1230,18 @@ function startServer(port) {
       process.exit(1);
     }
   });
+}
+
+if (require.main === module) {
+  startServer(PORT);
+
+  if (!process.env.DEBUG_NO_KEEPALIVE) {
+    setInterval(() => {
+      if (!listeningFlag) {
+        console.warn("[watchdog] Server lost connection state!");
+      }
+    }, 10000);
+  }
 }
 
 if (require.main === module) {
