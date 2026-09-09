@@ -296,20 +296,26 @@ function showNutritionPopup(food) {
     serving = servings.find(s => s.is_default === "1") || servings[0];
   }
 
-  // Format helper for null/undefined fields
+  // UPDATED: Safely extracts numbers from string/number inputs (e.g., "15g" -> 15)
   const formatVal = (val, unit = "") => {
-    if (val === undefined || val === null || val === "" || isNaN(Number(val))) {
-      return "-";
-    }
-    return `${parseFloat(val)}${unit}`;
+    if (val === undefined || val === null || val === "") return "-";
+    
+    // Extract digit and decimal sequences
+    const rawNum = String(val).replace(/[^0-9.]/g, "");
+    if (!rawNum) return "-";
+
+    const parsed = parseFloat(rawNum);
+    return isNaN(parsed) ? "-" : `${parsed}${unit}`;
   };
 
-  // Format helper for Daily Values (%)
+  // UPDATED: Safely parses Daily Values (%)
   const formatDV = (val) => {
-    if (val === undefined || val === null || val === "" || isNaN(Number(val))) {
-      return "";
-    }
-    return `${Math.round(Number(val))}%`;
+    if (val === undefined || val === null || val === "") return "";
+    const rawNum = String(val).replace(/[^0-9.]/g, "");
+    if (!rawNum) return "";
+    
+    const parsed = parseFloat(rawNum);
+    return isNaN(parsed) ? "" : `${Math.round(parsed)}%`;
   };
 
   const html = `
@@ -319,7 +325,7 @@ function showNutritionPopup(food) {
       
       <div class="label-row serving-size">
         <span class="bold">Serving Size</span>
-        <span>${serving?.serving_description || serving?.metric_serving_amount ? `${serving?.metric_serving_amount}${serving?.metric_serving_unit}` : "1 serving"}</span>
+        <span>${serving?.serving_description || (serving?.metric_serving_amount ? `${serving.metric_serving_amount}${serving.metric_serving_unit || 'g'}` : "1 serving")}</span>
       </div>
       <div class="label-divider medium"></div>
       
@@ -338,7 +344,7 @@ function showNutritionPopup(food) {
       <!-- Total Fat -->
       <div class="label-row">
         <span><strong class="bold">Total Fat</strong> ${formatVal(serving?.fat, "g")}</span>
-        <span class="bold">${formatDV(serving?.fat_dv || (serving?.fat ? (serving.fat / 78) * 100 : null))}</span>
+        <span class="bold">${formatDV(serving?.fat_dv || (serving?.fat ? (parseFloat(String(serving.fat).replace(/[^0-9.]/g, "")) / 78) * 100 : null))}</span>
       </div>
       <div class="label-divider thin"></div>
 
@@ -366,14 +372,14 @@ function showNutritionPopup(food) {
       <!-- Sodium -->
       <div class="label-row">
         <span><strong class="bold">Sodium</strong> ${formatVal(serving?.sodium, "mg")}</span>
-        <span class="bold">${formatDV(serving?.sodium_dv || (serving?.sodium ? (serving.sodium / 2300) * 100 : null))}</span>
+        <span class="bold">${formatDV(serving?.sodium_dv || (serving?.sodium ? (parseFloat(String(serving.sodium).replace(/[^0-9.]/g, "")) / 2300) * 100 : null))}</span>
       </div>
       <div class="label-divider thin"></div>
 
       <!-- Total Carbohydrate -->
       <div class="label-row">
         <span><strong class="bold">Total Carbohydrate</strong> ${formatVal(serving?.carbohydrate, "g")}</span>
-        <span class="bold">${formatDV(serving?.carbohydrate_dv || (serving?.carbohydrate ? (serving.carbohydrate / 275) * 100 : null))}</span>
+        <span class="bold">${formatDV(serving?.carbohydrate_dv || (serving?.carbohydrate ? (parseFloat(String(serving.carbohydrate).replace(/[^0-9.]/g, "")) / 275) * 100 : null))}</span>
       </div>
       <div class="label-divider thin"></div>
 
