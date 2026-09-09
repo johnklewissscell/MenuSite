@@ -1128,11 +1128,21 @@ app.get("/nutrition", async (req, res) => {
   const searchTerm = `${brand} ${name}`.trim();
 
   try {
-    // 1. Get URL from query string OR from mappings[upc] safely
     const localMapping = mappings[upc];
-    const targetUrl = directUrl || localMapping?.data?.food_url || localMapping?.food_url;
+    const foodData = localMapping?.data || localMapping;
 
-    // Direct URL Scraping Priority
+    // 1. Immediate Return for Full Local Mappings (Bypasses scraping entirely)
+    if (foodData?.servings) {
+      return res.json({
+        found: true,
+        food: foodData,
+        foodUrl: foodData.food_url || directUrl || null,
+        source: `Local Mapping (${localMapping?.source || "mappings.json"})`,
+      });
+    }
+
+    // 2. Direct Web Scraping Priority (Only if local serving data doesn't exist)
+    const targetUrl = directUrl || foodData?.food_url;
     if (targetUrl) {
       const scrapedData = await scrapeFatSecretUrl(targetUrl);
       if (scrapedData?.found && scrapedData?.food) {
@@ -1145,25 +1155,24 @@ app.get("/nutrition", async (req, res) => {
       }
     }
 
-    // 2. Check Local Mappings Fallback
+    // 3. Fallback for Partial Local Mappings (e.g., mapped name/url but failed scraper)
     if (localMapping) {
-      const foodData = localMapping.data || localMapping;
       return res.json({
         found: true,
         food: foodData,
         foodUrl: foodData.food_url || targetUrl || null,
-        source: `Local Mapping (${localMapping.source || "mappings.json"})`,
+        source: `Local Fallback (${localMapping.source || "mappings.json"})`,
       });
     }
 
-    // 3. Try Barcode Lookups (FatSecret -> Open Food Facts)
+    // 4. Barcode API Lookups (FatSecret -> Open Food Facts)
     if (upc) {
       const gtin13 = upc.replace(/\D/g, "").padStart(13, "0");
       const variants = Array.from(
         new Set([upc, gtin13, upc.padStart(12, "0"), upc.replace(/^0+/, "")])
       ).filter(Boolean);
 
-      // Try FatSecret with variations
+      // FatSecret API lookup
       for (const variant of variants) {
         try {
           const fsResult = await lookupFatSecretNutrition(variant);
@@ -1180,7 +1189,7 @@ app.get("/nutrition", async (req, res) => {
         }
       }
 
-      // Try Open Food Facts fallback
+      // Open Food Facts API lookup
       try {
         const offResponse = await axios.get(
           `https://world.openfoodfacts.org/api/v0/product/${upc}.json`,
@@ -1200,7 +1209,7 @@ app.get("/nutrition", async (req, res) => {
       }
     }
 
-    // 4. Fall Back to Name/Brand Text Search
+    // 5. Name/Brand Text Search
     if (searchTerm) {
       try {
         const fsSearch = await searchFatSecretNutrition(searchTerm);
@@ -1219,7 +1228,7 @@ app.get("/nutrition", async (req, res) => {
       }
     }
 
-    // 5. Return Generic Fallback Payload if Nothing Matches
+    // 6. Generic Fallback
     return res.json({
       found: false,
       food: createGenericNutrition(searchTerm || upc || "Product"),

@@ -296,13 +296,11 @@ function showNutritionPopup(food) {
     serving = servings.find(s => s.is_default === "1") || servings[0];
   }
 
-  // Safely extracts numbers from string/number inputs (e.g., "15g" -> 15)
+  // Safely formats numerical values, preserving 0 as a valid number
   const formatVal = (val, unit = "") => {
     if (val === undefined || val === null || val === "") return "-";
-    
     const rawNum = String(val).replace(/[^0-9.]/g, "");
     if (!rawNum) return "-";
-
     const parsed = parseFloat(rawNum);
     return isNaN(parsed) ? "-" : `${parsed}${unit}`;
   };
@@ -340,6 +338,18 @@ function showNutritionPopup(food) {
       <!-- Trans Fat -->
       <div class="label-row indent">
         <span><em>Trans</em> Fat ${formatVal(serving?.trans_fat, "g")}</span>
+      </div>
+      <div class="label-divider thin"></div>
+
+      <!-- Polyunsaturated Fat -->
+      <div class="label-row indent">
+        <span>Polyunsaturated Fat ${formatVal(serving?.polyunsaturated_fat, "g")}</span>
+      </div>
+      <div class="label-divider thin"></div>
+
+      <!-- Monounsaturated Fat -->
+      <div class="label-row indent">
+        <span>Monounsaturated Fat ${formatVal(serving?.monounsaturated_fat, "g")}</span>
       </div>
       <div class="label-divider thin"></div>
 
