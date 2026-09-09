@@ -2,72 +2,108 @@
   "0028400042437": {
     "source": "manual",
     "data": {
+      "product_name": "Reduced Fat Nacho Cheese Flavored Tortilla Chips",
+      "brand_name": "Doritos",
+      "food_url": "https://foods.fatsecret.com/calories-nutrition/doritos/reduced-fat-nacho-cheese",
       "_insertedAt": "2026-06-08T17:37:58.900Z"
     }
   },
   "0016571954369": {
     "source": "manual",
     "data": {
+      "product_name": "Sparkling Ice Fruit Punch",
+      "brand_name": "Talking Rain",
+      "food_url": "https://foods.fatsecret.com/calories-nutrition/talking-rain/sparkling-ice---black-raspberry",
       "_insertedAt": "2026-06-08T17:38:06.070Z"
     }
   },
   "0041900072827": {
     "source": "manual",
     "data": {
+      "product_name": "Chocolate Fat Free Milk",
+      "brand_name": "TruMoo",
+      "food_url": "https://foods.fatsecret.com/calories-nutrition/trumoo/chocolate-fat-free-milk",
       "_insertedAt": "2026-06-08T17:38:22.423Z"
     }
   },
   "0028400239349": {
     "source": "manual",
     "data": {
+      "product_name": "Kettle Cooked Potato Chips",
+      "brand_name": "Lay's",
+      "food_url": "https://foods.fatsecret.com/calories-nutrition/lays/kettle-cooked-original-40%25-less-fat",
       "_insertedAt": "2026-06-08T17:38:31.296Z"
     }
   },
   "0016571959203": {
     "source": "manual",
     "data": {
+      "product_name": "Sparkling Ice Orange Mango",
+      "brand_name": "Talking Rain",
+      "food_url": "https://foods.fatsecret.com/calories-nutrition/talking-rain/sparkling-ice-orange-mango-(bottle)",
       "_insertedAt": "2026-06-08T17:39:37.055Z"
     }
   },
   "0016571940355": {
     "source": "manual",
     "data": {
+      "product_name": "Classic Lemonade Flavored Sparkling Water",
+      "brand_name": "Talking Rain",
+      "food_url": "https://foods.fatsecret.com/calories-nutrition/talking-rain/sparkling-ice-lemonade-(bottle)",
       "_insertedAt": "2026-06-08T17:39:42.805Z"
     }
   },
   "0028400243063": {
     "source": "manual",
     "data": {
+      "product_name": "Kettle Cooked Jalapeno Cheddar Flavored Potato Chips",
+      "brand_name": "Lay's",
+      "food_url": "https://foods.fatsecret.com/calories-nutrition/lays/kettle-cooked-jalape%C3%B1o-cheddar-potato-chips",
       "_insertedAt": "2026-06-08T17:40:21.107Z"
     }
   },
   "0076183003145": {
     "source": "manual",
     "data": {
+      "product_name": "Diet Peach Iced Tea",
+      "brand_name": "Snapple",
+      "food_url": "https://foods.fatsecret.com/calories-nutrition/snapple/diet-peach-iced-tea-(16-oz)",
       "_insertedAt": "2026-06-08T17:40:45.725Z"
     }
   },
   "0853004004952": {
     "source": "manual",
     "data": {
+      "product_name": "Nutrient Enhanced Water",
+      "brand_name": "Core",
+      "food_url": "https://foods.fatsecret.com/calories-nutrition/core/core-hydration",
       "_insertedAt": "2026-06-08T17:40:48.709Z"
     }
   },
   "0000006827465": {
     "source": "manual",
     "data": {
+      "product_name": "Purified Water",
+      "brand_name": "Nestle Pure Life",
+      "food_url": "https://foods.fatsecret.com/calories-nutrition/nestle/pure-life-purified-water-(bottle)",
       "_insertedAt": "2026-06-08T17:40:51.253Z"
     }
   },
   "0025293001398": {
     "source": "manual",
     "data": {
+      "product_name": "Very Vanilla Soymilk",
+      "brand_name": "Silk",
+      "food_url": "https://foods.fatsecret.com/calories-nutrition/silk/very-vanilla-soymilk",
       "_insertedAt": "2026-06-08T17:40:53.988Z"
     }
   },
   "0030100215981": {
     "source": "manual",
     "data": {
+      "product_name": "Scooby-Doo! Graham Cracker Snacks Cinnamon",
+      "brand_name": "Keebler",
+      "food_url": "https://foods.fatsecret.com/calories-nutrition/keebler/scooby-doo-baked-cinnamon-graham-cracker-sticks",
       "_insertedAt": "2026-06-12T21:13:51.029Z"
     }
   }

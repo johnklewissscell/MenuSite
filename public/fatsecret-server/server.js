@@ -1123,9 +1123,11 @@ app.get("/nutrition", async (req, res) => {
   const searchTerm = `${brand} ${name}`.trim();
 
   try {
-    // 1. Direct Catalog URL Scraping Priority
-    // Checks query parameter first, then fallback to PRODUCT_CATALOG[upc]
-    const targetUrl = directUrl || (upc && PRODUCT_CATALOG[upc]?.[2]);
+    // 1. Get URL from query string OR from mappings[upc] safely
+    const localMapping = mappings[upc];
+    const targetUrl = directUrl || localMapping?.data?.food_url || localMapping?.food_url;
+
+    // Direct URL Scraping Priority
     if (targetUrl) {
       const scrapedData = await scrapeFatSecretUrl(targetUrl);
       if (scrapedData?.found && scrapedData?.food) {
@@ -1138,13 +1140,14 @@ app.get("/nutrition", async (req, res) => {
       }
     }
 
-    // 2. Check Local Mappings
-    if (upc && mappings[upc]) {
+    // 2. Check Local Mappings Fallback
+    if (localMapping) {
+      const foodData = localMapping.data || localMapping;
       return res.json({
         found: true,
-        food: mappings[upc].data,
-        foodUrl: mappings[upc].data.food_url || null,
-        source: `Local Mapping (${mappings[upc].source})`,
+        food: foodData,
+        foodUrl: foodData.food_url || targetUrl || null,
+        source: `Local Mapping (${localMapping.source || "mappings.json"})`,
       });
     }
 
