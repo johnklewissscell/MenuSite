@@ -205,97 +205,63 @@ function stripHtml(value) {
 
 function parseFatSecretPageHtml(html, productName = "", foodUrl = null) {
   const baseName = String(productName || "").trim() || "Unknown Product";
-  const titleMatch = html.match(/<h1[^>]*>([^<]+)<\/h1>/i);
-  const brandMatch = html.match(/<h2[^>]*class=["']manufacturer["'][^>]*>\s*(?:<a[^>]*>)?([^<]+)<\/a>\s*<\/h2>/i);
+
+  // Clean common character encoding issues (e.g. Jalapeño -> JalapeñO)
+  const cleanedHtml = String(html || "")
+    .replace(/ñO/g, "ño")
+    .replace(/Ã±/g, "ñ")
+    .replace(/&ntilde;/gi, "ñ")
+    .replace(/&amp;/gi, "&");
+
+  const titleMatch = cleanedHtml.match(/<h1[^>]*>([^<]+)<\/h1>/i);
+  const brandMatch = cleanedHtml.match(/<h2[^>]*class=["']manufacturer["'][^>]*>\s*(?:<a[^>]*>)?([^<]+)<\/a>\s*<\/h2>/i);
+  
   const parsedTitle = decodeHtmlEntities(titleMatch?.[1]).trim() || baseName;
   const parsedBrand = decodeHtmlEntities(brandMatch?.[1]).trim() || "";
-  const pageText = stripHtml(html);
-  const normalizedPageText = pageText.replace(/\s+/g, " ").trim();
 
-  const fetchFactValue = (labels, units = "(?:g|mg|mcg|IU|kcal|calories?)") => {
+  // Helper to extract numbers strictly from whole label matches
+  const fetchFactValue = (labels) => {
     const labelList = Array.isArray(labels) ? labels : [labels];
-    const allowedUnitPattern = units || "(?:g|mg|mcg|IU|kcal|calories?)";
 
-    const scanTextForMatch = (text) => {
-      for (const label of labelList) {
-        const variants = Array.from(new Set([label, ...label.split(/\s+/).filter(Boolean)]));
-        for (const variant of variants) {
-          const needle = String(variant).trim();
-          if (!needle) continue;
-          const lower = (text || "").toLowerCase();
-          const labelIndex = lower.indexOf(needle.toLowerCase());
-          if (labelIndex === -1) continue;
-
-          const afterLabel = text.slice(labelIndex + needle.length);
-          const directMatch = afterLabel.match(
-            new RegExp(`^\\s*[:\-]?\\s*([<>]?\\s*\\d[\\d,.]*(?:\\.\\d+)?\\s*(?:${allowedUnitPattern})?)`, "i"),
-          );
-          if (directMatch && directMatch[1]) {
-            return directMatch[1].trim();
-          }
-
-          const fallback = afterLabel.match(
-            /\d[\d,\.]*?(?:\.\d+)?\s*(?:g|mg|mcg|iu|kcal|calories?)?/i,
-          );
-          if (fallback && fallback[0]) {
-            return fallback[0].trim();
-          }
-        }
-      }
-      return null;
-    };
-
-    const htmlPatterns = [
-      /<div[^>]*class=["']factTitle["'][^>]*>(.*?)<\/div>\s*<div[^>]*class=["']factValue["'][^>]*>(.*?)<\/div>/gi,
-      /<div[^>]*>\s*(.*?)\s*<\/div>\s*<div[^>]*>\s*(.*?)\s*<\/div>/gi,
-      /<td[^>]*>\s*(.*?)\s*<\/td>\s*<td[^>]*>\s*(.*?)\s*<\/td>/gi,
-    ];
-
-    for (const pattern of htmlPatterns) {
-      const matches = [...html.matchAll(pattern)];
-      for (const match of matches) {
-        if (!match[2]) continue;
-        const labelSegment = match[1] || "";
-        const valueSegment = match[2] || "";
-        const labelText = stripHtml(labelSegment).trim();
-        if (!labelText) continue;
-        const normalizedLabel = labelText.replace(/\s+/g, " ").trim();
-        if (!labelList.some((label) => String(label).toLowerCase() === normalizedLabel.toLowerCase() || normalizedLabel.toLowerCase().includes(String(label).toLowerCase()))) {
-          continue;
-        }
-        const rawValue = stripHtml(valueSegment).trim();
-        if (rawValue) return rawValue;
+    for (const label of labelList) {
+      // Direct Regex to capture numbers adjacent to exact label matches
+      const regex = new RegExp(
+        `(?:${label})(?:<[^>]+>|\\s|:|-)*?([<>]?\\s*\\d+[\\d,.]*)\\s*(?:g|mg|mcg|iu|kcal|calories)?`,
+        "i"
+      );
+      const match = cleanedHtml.match(regex);
+      if (match && match[1]) {
+        const num = parseFloat(match[1].replace(/[^0-9.]/g, ""));
+        if (!isNaN(num)) return num;
       }
     }
-
-    const pageTextCandidate = normalizedPageText;
-    const directScan = scanTextForMatch(pageTextCandidate);
-    if (directScan) return directScan;
-
-    const genericScan = scanTextForMatch(pageText);
-    return genericScan;
+    return 0; // Return 0 to avoid undefined/blank dashes in the UI
   };
 
-  const calories = parseValue(fetchFactValue(["Calories"], "(?:kcal|calories?)"));
-  const fat = parseValue(fetchFactValue(["Fat"]));
-  const carbohydrate = parseValue(fetchFactValue(["Carbs", "Carbohydrate", "Carbohydrates"]));
-  const protein = parseValue(fetchFactValue(["Protein"]));
-  const sodium = parseValue(fetchFactValue(["Sodium"]));
-  const sugar = parseValue(fetchFactValue(["Sugar", "Sugars", "Total Sugars", "Total Sugar"]));
-  const fiber = parseValue(fetchFactValue(["Fiber", "Dietary Fiber"]));
-  const saturatedFat = parseValue(fetchFactValue(["Saturated Fat", "Sat Fat"]));
-  const transFat = parseValue(fetchFactValue(["Trans Fat"]));
-  const cholesterol = parseValue(fetchFactValue(["Cholesterol"]));
-  const potassium = parseValue(fetchFactValue(["Potassium"]));
-  const calcium = parseValue(fetchFactValue(["Calcium"]));
-  const iron = parseValue(fetchFactValue(["Iron"]));
-  const vitaminD = parseValue(fetchFactValue(["Vitamin D"]));
+  // Parsing nutrients with explicit priorities
+  const calories = fetchFactValue(["Calories", "Energy"]);
+  const fat = fetchFactValue(["Total Fat", "Fat"]);
+  const saturatedFat = fetchFactValue(["Saturated Fat", "Sat Fat"]);
+  const transFat = fetchFactValue(["Trans Fat"]);
+  const cholesterol = fetchFactValue(["Cholesterol"]);
+  const sodium = fetchFactValue(["Sodium"]);
+  const carbohydrate = fetchFactValue(["Total Carbohydrate", "Carbs", "Carbohydrate"]);
+  const fiber = fetchFactValue(["Dietary Fiber", "Fiber"]);
+  const sugar = fetchFactValue(["Total Sugars", "Sugars", "Sugar"]);
+  const protein = fetchFactValue(["Protein"]);
+  const calcium = fetchFactValue(["Calcium"]);
+  const iron = fetchFactValue(["Iron"]);
+  const potassium = fetchFactValue(["Potassium"]);
+  const vitaminD = fetchFactValue(["Vitamin D"]);
 
-  const servingMatch = html.match(/There are\s+<b>(\d+)\s+calories<\/b>\s+in\s+([^<.]+?)(?:\s+of\s+.+)?\./i);
+  // Serving description extraction
+  const servingMatch = cleanedHtml.match(/There are\s+<b>\d+\s+calories<\/b>\s+in\s+([^<.]+?)(?:\s+of\s+.+)?\./i);
+  const normalizedPageText = stripHtml(cleanedHtml).replace(/\s+/g, " ").trim();
   const servingDescriptionFromText = normalizedPageText.match(/Serving\s+Size\s*([A-Za-z0-9.\-]+(?:\s+[A-Za-z0-9.\-]+){0,3})(?=\s*Amount\s+Per\s+Serving|$)/i)?.[1]?.trim();
+  
   const servingDescription = servingMatch?.[2]
     ? servingMatch[2].replace(/<[^>]+>/g, "").trim()
-    : (servingDescriptionFromText || "per serving");
+    : (servingDescriptionFromText || "1 serving");
 
   const normalizedServingDescription = servingDescription.includes(" of ")
     ? servingDescription.split(/\s+of\s+/i)[0].trim()
@@ -310,21 +276,21 @@ function parseFatSecretPageHtml(html, productName = "", foodUrl = null) {
     servings: {
       serving: [
         {
-          serving_description: normalizedServingDescription || "per serving",
-          calories: calories ?? 0,
-          fat: fat ?? 0,
-          saturated_fat: saturatedFat ?? 0,
-          trans_fat: transFat ?? undefined,
-          carbohydrate: carbohydrate ?? 0,
-          sugar: sugar ?? 0,
-          protein: protein ?? 0,
-          sodium: sodium ?? 0,
-          fiber: fiber ?? 0,
-          cholesterol: cholesterol ?? undefined,
-          potassium: potassium ?? undefined,
-          calcium: calcium ?? undefined,
-          iron: iron ?? undefined,
-          vitamin_d: vitaminD ?? undefined,
+          serving_description: normalizedServingDescription || "1 serving",
+          calories: calories,
+          fat: fat,
+          saturated_fat: saturatedFat,
+          trans_fat: transFat,
+          carbohydrate: carbohydrate,
+          sugar: sugar,
+          protein: protein,
+          sodium: sodium,
+          fiber: fiber,
+          cholesterol: cholesterol,
+          potassium: potassium,
+          calcium: calcium,
+          iron: iron,
+          vitamin_d: vitaminD,
           is_default: "1",
         },
       ],
