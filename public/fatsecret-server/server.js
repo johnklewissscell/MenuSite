@@ -1118,12 +1118,28 @@ function createGenericNutrition(productName = "Product", overrides = {}) {
 
 app.get("/nutrition", async (req, res) => {
   const upc = (req.query.upc || req.query.barcode || "").trim();
+  const directUrl = (req.query.url || "").trim();
   const name = (req.query.name || "").trim();
   const brand = (req.query.brand || "").trim();
   const searchTerm = `${brand} ${name}`.trim();
 
   try {
-    // 1. Check Local Mappings First
+    // 1. Direct Catalog URL Scraping Priority
+    // Checks query parameter first, then fallback to PRODUCT_CATALOG[upc]
+    const targetUrl = directUrl || (upc && PRODUCT_CATALOG[upc]?.[2]);
+    if (targetUrl) {
+      const scrapedData = await scrapeFatSecretUrl(targetUrl);
+      if (scrapedData?.found && scrapedData?.food) {
+        return res.json({
+          found: true,
+          food: scrapedData.food,
+          foodUrl: targetUrl,
+          source: "FatSecret Direct Scrape",
+        });
+      }
+    }
+
+    // 2. Check Local Mappings
     if (upc && mappings[upc]) {
       return res.json({
         found: true,
@@ -1133,7 +1149,7 @@ app.get("/nutrition", async (req, res) => {
       });
     }
 
-    // 2. Try Barcode Lookups (FatSecret -> Open Food Facts)
+    // 3. Try Barcode Lookups (FatSecret -> Open Food Facts)
     if (upc) {
       const gtin13 = upc.replace(/\D/g, "").padStart(13, "0");
       const variants = Array.from(
@@ -1177,7 +1193,7 @@ app.get("/nutrition", async (req, res) => {
       }
     }
 
-    // 3. Fall Back to Name/Brand Text Search
+    // 4. Fall Back to Name/Brand Text Search
     if (searchTerm) {
       try {
         const fsSearch = await searchFatSecretNutrition(searchTerm);
@@ -1196,7 +1212,7 @@ app.get("/nutrition", async (req, res) => {
       }
     }
 
-    // 4. Return Generic Fallback Payload if Nothing Match
+    // 5. Return Generic Fallback Payload if Nothing Matches
     return res.json({
       found: false,
       food: createGenericNutrition(searchTerm || upc || "Product"),
