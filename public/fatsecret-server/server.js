@@ -1219,20 +1219,27 @@ app.delete("/mappings", (req, res) => {
 
 const PORT = Number(process.env.PORT) || 3000;
 let server = null;
+let listeningFlag = false;
 
 function startServer(port) {
   server = app.listen(port, "0.0.0.0", () => {
+    listeningFlag = true;
     console.log(`Server running on http://0.0.0.0:${port}`);
   });
 
   server.on("error", (err) => {
+    listeningFlag = false;
     if (err.code === "EADDRINUSE") {
       console.error(`Port ${port} is in use. Exiting process so process manager can restart.`);
-      process.exit(1); // Force process to restart cleanly instead of changing ports
+      process.exit(1);
     } else {
       console.error("SERVER ERROR:", err.message);
       process.exit(1);
     }
+  });
+
+  server.on("close", () => {
+    listeningFlag = false;
   });
 }
 
