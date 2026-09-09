@@ -304,6 +304,81 @@ function shouldUseFatSecretScrapeFallback(query) {
   return /[A-Za-z]/.test(raw);
 }
 
+const axios = require("axios");
+const cheerio = require("cheerio");
+
+async function scrapeFatSecretUrl(url) {
+  try {
+    const { data: html } = await axios.get(url, {
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+      },
+      timeout: 5000,
+    });
+
+    const $ = cheerio.load(html);
+
+    // Extract exact numbers by searching text elements
+    const getVal = (labels) => {
+      for (const label of labels) {
+        const el = $(`*:contains("${label}")`).last();
+        if (el.length) {
+          const text = el.parent().text() || el.text();
+          const match = text.match(/\d+(?:\.\d+)?/);
+          if (match) return parseFloat(match[0]);
+        }
+      }
+      return 0; // Fallback to 0 so no blanks are rendered
+    };
+
+    const calories = getVal(["Calories"]);
+    const fat = getVal(["Total Fat", "Fat"]);
+    const satFat = getVal(["Saturated Fat"]);
+    const transFat = getVal(["Trans Fat"]);
+    const cholesterol = getVal(["Cholesterol"]);
+    const sodium = getVal(["Sodium"]);
+    const carbs = getVal(["Total Carbohydrate", "Carbs"]);
+    const fiber = getVal(["Dietary Fiber", "Fiber"]);
+    const sugar = getVal(["Sugars", "Sugar"]);
+    const protein = getVal(["Protein"]);
+
+    const title = $("h1").first().text().trim() || "Unknown Product";
+    const brand = $(".manufacturer").text().trim() || "";
+
+    return {
+      found: true,
+      food: {
+        food_id: `scraped-${Date.now()}`,
+        food_name: title,
+        brand_name: brand,
+        food_type: "scraped",
+        servings: {
+          serving: [
+            {
+              serving_description: "1 serving",
+              calories: calories,
+              fat: fat,
+              saturated_fat: satFat,
+              trans_fat: transFat,
+              cholesterol: cholesterol,
+              sodium: sodium,
+              carbohydrate: carbs,
+              fiber: fiber,
+              sugar: sugar,
+              protein: protein,
+              is_default: "1",
+            },
+          ],
+        },
+      },
+    };
+  } catch (err) {
+    console.error("Scraping error:", err.message);
+    return { found: false };
+  }
+}
+
 async function lookupFatSecretScrape(query, label = "", allowNumericQuery = false, pageValidator = null) {
   const searchQuery = String(query || label || "").trim();
   if (!searchQuery || (!allowNumericQuery && !shouldUseFatSecretScrapeFallback(searchQuery))) {
