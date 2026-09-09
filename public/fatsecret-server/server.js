@@ -1080,56 +1080,92 @@ app.get("/nutrition", async (req, res) => {
   const searchTerm = `${brand} ${name}`.trim();
 
   try {
-    if (upc) {
-      // 1. Format UPC strictly to GTIN-13 for FatSecret
-      const gtin13 = upc.replace(/\D/g, "").padStart(13, "0");
-      
-      const fsResult = await lookupFatSecretNutrition(gtin13);
-      if (fsResult?.found && fsResult?.food?.servings) {
-        return res.json({
-          found: true,
-          food: fsResult.food,
-          foodUrl: fsResult.food.food_url || `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(upc)}`,
-          source: fsResult.source || "FatSecret Barcode API",
-        });
-      }
-
-      // If missing in FatSecret, return found: false without falling back to OFF
+    // 1. Check Local Mappings First
+    if (upc && mappings[upc]) {
       return res.json({
-        found: false,
-        food: null,
-        foodUrl: `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(upc)}`,
-        source: "FatSecret: Product not found for GTIN " + gtin13,
+        found: true,
+        food: mappings[upc].data,
+        foodUrl: mappings[upc].data.food_url || null,
+        source: `Local Mapping (${mappings[upc].source})`,
       });
     }
 
-    // 2. Name Search via FatSecret
-    if (searchTerm) {
-      const fsSearch = await searchFatSecretNutrition(searchTerm);
-      if (fsSearch?.found && fsSearch?.food) {
-        return res.json({
-          found: true,
-          food: fsSearch.food,
-          foodUrl:
-            fsSearch.food.food_url ||
-            `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(searchTerm)}`,
-          source: "FatSecret Search",
-        });
+    // 2. Try Barcode Lookups (FatSecret -> Open Food Facts)
+    if (upc) {
+      const gtin13 = upc.replace(/\D/g, "").padStart(13, "0");
+      const variants = Array.from(
+        new Set([upc, gtin13, upc.padStart(12, "0"), upc.replace(/^0+/, "")])
+      ).filter(Boolean);
+
+      // Try FatSecret with variations
+      for (const variant of variants) {
+        try {
+          const fsResult = await lookupFatSecretNutrition(variant);
+          if (fsResult?.found && fsResult?.food) {
+            return res.json({
+              found: true,
+              food: fsResult.food,
+              foodUrl: fsResult.food.food_url || null,
+              source: fsResult.source || "FatSecret Barcode API",
+            });
+          }
+        } catch (e) {
+          console.warn(`[FatSecret] Variant ${variant} failed:`, e.message);
+        }
+      }
+
+      // Try Open Food Facts fallback
+      try {
+        const offResponse = await axios.get(
+          `https://world.openfoodfacts.org/api/v0/product/${upc}.json`,
+          { timeout: 5000 }
+        );
+        if (offResponse.data?.status === 1 && offResponse.data?.product) {
+          const offFood = convertOFFNutrition(offResponse.data.product, searchTerm);
+          return res.json({
+            found: true,
+            food: offFood,
+            foodUrl: offResponse.data.product.url || `https://world.openfoodfacts.org/product/${upc}`,
+            source: "Open Food Facts",
+          });
+        }
+      } catch (e) {
+        console.warn("[OFF] Barcode lookup failed:", e.message);
       }
     }
 
+    // 3. Fall Back to Name/Brand Text Search
+    if (searchTerm) {
+      try {
+        const fsSearch = await searchFatSecretNutrition(searchTerm);
+        if (fsSearch?.found && fsSearch?.food) {
+          return res.json({
+            found: true,
+            food: fsSearch.food,
+            foodUrl:
+              fsSearch.food.food_url ||
+              `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(searchTerm)}`,
+            source: "FatSecret Text Search",
+          });
+        }
+      } catch (e) {
+        console.warn("[FatSecret] Name search failed:", e.message);
+      }
+    }
+
+    // 4. Return Generic Fallback Payload if Nothing Match
     return res.json({
       found: false,
-      food: null,
-      foodUrl: "https://platform.fatsecret.com/api-demo#barcode-api",
-      source: "FatSecret: No matching product found",
+      food: createGenericNutrition(searchTerm || upc || "Product"),
+      foodUrl: `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(searchTerm || upc)}`,
+      source: "Product not found in local cache or external providers",
     });
   } catch (e) {
-    console.error("FatSecret Lookup Error:", e.message);
+    console.error("[Nutrition Route Error]:", e.message);
     return res.status(500).json({
       found: false,
+      food: createGenericNutrition(searchTerm || "Product"),
       error: e.message,
-      source: "FatSecret API Failure",
     });
   }
 });
