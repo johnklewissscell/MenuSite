@@ -296,26 +296,15 @@ function showNutritionPopup(food) {
     serving = servings.find(s => s.is_default === "1") || servings[0];
   }
 
-  // UPDATED: Safely extracts numbers from string/number inputs (e.g., "15g" -> 15)
+  // Safely extracts numbers from string/number inputs (e.g., "15g" -> 15)
   const formatVal = (val, unit = "") => {
     if (val === undefined || val === null || val === "") return "-";
     
-    // Extract digit and decimal sequences
     const rawNum = String(val).replace(/[^0-9.]/g, "");
     if (!rawNum) return "-";
 
     const parsed = parseFloat(rawNum);
     return isNaN(parsed) ? "-" : `${parsed}${unit}`;
-  };
-
-  // UPDATED: Safely parses Daily Values (%)
-  const formatDV = (val) => {
-    if (val === undefined || val === null || val === "") return "";
-    const rawNum = String(val).replace(/[^0-9.]/g, "");
-    if (!rawNum) return "";
-    
-    const parsed = parseFloat(rawNum);
-    return isNaN(parsed) ? "" : `${Math.round(parsed)}%`;
   };
 
   const html = `
@@ -335,110 +324,87 @@ function showNutritionPopup(food) {
         <span class="calories-val">${formatVal(serving?.calories)}</span>
       </div>
       <div class="label-divider medium"></div>
-      
-      <div class="label-row dv-header">
-        <span class="bold-right">% Daily Value*</span>
-      </div>
-      <div class="label-divider thin"></div>
 
       <!-- Total Fat -->
       <div class="label-row">
         <span><strong class="bold">Total Fat</strong> ${formatVal(serving?.fat, "g")}</span>
-        <span class="bold">${formatDV(serving?.fat_dv || (serving?.fat ? (parseFloat(String(serving.fat).replace(/[^0-9.]/g, "")) / 78) * 100 : null))}</span>
       </div>
       <div class="label-divider thin"></div>
 
       <!-- Saturated Fat -->
       <div class="label-row indent">
         <span>Saturated Fat ${formatVal(serving?.saturated_fat, "g")}</span>
-        <span class="bold">${formatDV(serving?.saturated_fat_dv)}</span>
       </div>
       <div class="label-divider thin"></div>
 
       <!-- Trans Fat -->
       <div class="label-row indent">
         <span><em>Trans</em> Fat ${formatVal(serving?.trans_fat, "g")}</span>
-        <span></span>
       </div>
       <div class="label-divider thin"></div>
 
       <!-- Cholesterol -->
       <div class="label-row">
         <span><strong class="bold">Cholesterol</strong> ${formatVal(serving?.cholesterol, "mg")}</span>
-        <span class="bold">${formatDV(serving?.cholesterol_dv)}</span>
       </div>
       <div class="label-divider thin"></div>
 
       <!-- Sodium -->
       <div class="label-row">
         <span><strong class="bold">Sodium</strong> ${formatVal(serving?.sodium, "mg")}</span>
-        <span class="bold">${formatDV(serving?.sodium_dv || (serving?.sodium ? (parseFloat(String(serving.sodium).replace(/[^0-9.]/g, "")) / 2300) * 100 : null))}</span>
       </div>
       <div class="label-divider thin"></div>
 
       <!-- Total Carbohydrate -->
       <div class="label-row">
         <span><strong class="bold">Total Carbohydrate</strong> ${formatVal(serving?.carbohydrate, "g")}</span>
-        <span class="bold">${formatDV(serving?.carbohydrate_dv || (serving?.carbohydrate ? (parseFloat(String(serving.carbohydrate).replace(/[^0-9.]/g, "")) / 275) * 100 : null))}</span>
       </div>
       <div class="label-divider thin"></div>
 
       <!-- Dietary Fiber -->
       <div class="label-row indent">
         <span>Dietary Fiber ${formatVal(serving?.fiber, "g")}</span>
-        <span class="bold">${formatDV(serving?.fiber_dv)}</span>
       </div>
       <div class="label-divider thin"></div>
 
       <!-- Total Sugars -->
       <div class="label-row indent">
         <span>Total Sugars ${formatVal(serving?.sugar, "g")}</span>
-        <span></span>
       </div>
       <div class="label-divider thin"></div>
 
       <!-- Added Sugars -->
       <div class="label-row double-indent">
         <span>Includes ${formatVal(serving?.added_sugars, "g")} Added Sugars</span>
-        <span class="bold">${formatDV(serving?.added_sugars_dv)}</span>
       </div>
       <div class="label-divider thin"></div>
 
       <!-- Protein -->
       <div class="label-row">
         <span><strong class="bold">Protein</strong> ${formatVal(serving?.protein, "g")}</span>
-        <span></span>
       </div>
       <div class="label-divider medium"></div>
 
       <!-- Vitamins & Minerals -->
       <div class="label-row">
         <span>Vitamin D ${formatVal(serving?.vitamin_d, "mcg")}</span>
-        <span>${formatDV(serving?.vitamin_d_dv)}</span>
       </div>
       <div class="label-divider thin"></div>
 
       <div class="label-row">
         <span>Calcium ${formatVal(serving?.calcium, "mg")}</span>
-        <span>${formatDV(serving?.calcium_dv)}</span>
       </div>
       <div class="label-divider thin"></div>
 
       <div class="label-row">
         <span>Iron ${formatVal(serving?.iron, "mg")}</span>
-        <span>${formatDV(serving?.iron_dv)}</span>
       </div>
       <div class="label-divider thin"></div>
 
       <div class="label-row">
         <span>Potassium ${formatVal(serving?.potassium, "mg")}</span>
-        <span>${formatDV(serving?.potassium_dv)}</span>
       </div>
       <div class="label-divider medium"></div>
-
-      <p class="label-footnote">
-        * The % Daily Value (DV) tells you how much a nutrient in a serving of food contributes to a daily diet. 2,000 calories a day is used for general nutrition advice.
-      </p>
     </div>
   `;
 

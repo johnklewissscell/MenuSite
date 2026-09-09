@@ -318,44 +318,49 @@ async function scrapeFatSecretUrl(url) {
 
     const $ = cheerio.load(html);
 
-    // Extract exact numbers by searching text elements
-    const getVal = (labels) => {
+    // Helper to extract numbers by looking for key label text in cells or rows
+    const parseValue = (labels) => {
       for (const label of labels) {
-        const el = $(`*:contains("${label}")`).last();
-        if (el.length) {
-          const text = el.parent().text() || el.text();
-          const match = text.match(/\d+(?:\.\d+)?/);
-          if (match) return parseFloat(match[0]);
+        // Find elements containing the label text
+        const target = $(`*:contains("${label}")`).last();
+        if (target.length) {
+          // Check the full parent text or adjacent cell text
+          const rowText = target.closest("tr, div").text() || target.parent().text();
+          
+          // Match numbers, decimals, or g/mg suffixes attached to numbers
+          const match = rowText.match(new RegExp(`${label}[^0-9]*([0-9]+(?:\\.[0-9]+)?)`, "i")) 
+                     || rowText.match(/([0-9]+(?:\.[0-9]+)?)\s*(?:g|mg|mcg|kcal)?/i);
+          
+          if (match && match[1]) {
+            return parseFloat(match[1]);
+          }
         }
       }
-      return 0; // Fallback to 0 so no blanks are rendered
+      return null;
     };
 
-    const calories = getVal(["Calories"]);
-    const fat = getVal(["Total Fat", "Fat"]);
-    const satFat = getVal(["Saturated Fat"]);
-    const transFat = getVal(["Trans Fat"]);
-    const cholesterol = getVal(["Cholesterol"]);
-    const sodium = getVal(["Sodium"]);
-    const carbs = getVal(["Total Carbohydrate", "Carbs"]);
-    const fiber = getVal(["Dietary Fiber", "Fiber"]);
-    const sugar = getVal(["Sugars", "Sugar"]);
-    const protein = getVal(["Protein"]);
+    // FatSecret standard panel selectors fallback
+    const calories = parseValue(["Calories"]) || parseFloat($(".factValue").eq(0).text()) || 0;
+    const fat = parseValue(["Total Fat", "Fat"]) || 0;
+    const satFat = parseValue(["Saturated Fat"]) || 0;
+    const transFat = parseValue(["Trans Fat"]) || 0;
+    const cholesterol = parseValue(["Cholesterol"]) || 0;
+    const sodium = parseValue(["Sodium"]) || 0;
+    const carbs = parseValue(["Total Carbohydrate", "Carbs"]) || 0;
+    const fiber = parseValue(["Dietary Fiber", "Fiber"]) || 0;
+    const sugar = parseValue(["Sugars", "Sugar"]) || 0;
+    const protein = parseValue(["Protein"]) || 0;
 
-    const title = $("h1").first().text().trim() || "Unknown Product";
-    const brand = $(".manufacturer").text().trim() || "";
+    const servingText = $(".serving_size_value").text().trim() || "1 serving";
 
     return {
       found: true,
       food: {
-        food_id: `scraped-${Date.now()}`,
-        food_name: title,
-        brand_name: brand,
-        food_type: "scraped",
+        food_name: $("h1").first().text().trim() || "Nutrition Facts",
         servings: {
           serving: [
             {
-              serving_description: "1 serving",
+              serving_description: servingText,
               calories: calories,
               fat: fat,
               saturated_fat: satFat,
