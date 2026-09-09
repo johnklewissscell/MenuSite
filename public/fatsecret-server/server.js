@@ -1217,7 +1217,7 @@ app.delete("/mappings", (req, res) => {
   return res.json({ ok: true });
 });
 
-let PORT = Number(process.env.PORT) || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 let server = null;
 
 function startServer(port) {
@@ -1239,27 +1239,11 @@ function startServer(port) {
 // Only start the server if called directly (not imported during tests)
 if (require.main === module) {
   startServer(PORT);
-}
-
-if (require.main === module) {
-  startServer(PORT);
 
   if (!process.env.DEBUG_NO_KEEPALIVE) {
     setInterval(() => {
       if (!listeningFlag) {
         console.warn("[watchdog] Server lost connection state!");
-      }
-    }, 10000);
-  }
-}
-
-if (require.main === module) {
-  startServer(PORT);
-
-  if (!process.env.DEBUG_NO_KEEPALIVE) {
-    setInterval(() => {
-      if (!listeningFlag && Date.now() % 10000 === 0) {
-        console.log("[watchdog] Server listening:", listeningFlag);
       }
     }, 10000);
   }
