@@ -304,7 +304,6 @@ function shouldUseFatSecretScrapeFallback(query) {
   return /[A-Za-z]/.test(raw);
 }
 
-const axios = require("axios");
 const cheerio = require("cheerio");
 
 async function scrapeFatSecretUrl(url) {
