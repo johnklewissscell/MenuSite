@@ -48,6 +48,12 @@ function toTitleCase(str) {
   return str.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function getFatSecretUrl(item) {
+  const catalogUrl = PRODUCT_CATALOG[item.UPC]?.[2];
+  if (catalogUrl) return catalogUrl;
+  return `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(item.UPC || item.name || "")}`;
+}
+
 function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -467,16 +473,11 @@ function showPopup(item) {
       <p>${item.description || "No description available."}</p>
     </div>
 
-    <button id="nutrition-btn" class="ext-btn" style="background-color:#002855;color:#fff;border:none;padding:10px 16px;cursor:pointer;border-radius:4px;width:100%;">
+        <a id="nutrition-btn" class="ext-btn" href="${getFatSecretUrl(item)}" target="_blank" rel="noopener noreferrer"
+       style="display:block;text-align:center;text-decoration:none;background-color:#002855;color:#fff;border:none;padding:10px 16px;cursor:pointer;border-radius:4px;width:100%;box-sizing:border-box;">
       View Nutrition Facts
-    </button>
+    </a>
   `;
-
-  // Attach dynamic listener to fetch and display label on click
-  document.getElementById("nutrition-btn").onclick = () => {
-    document.getElementById("popup-details").innerHTML = "<p style='text-align:center;'>Loading Nutrition Facts...</p>";
-    loadNutrition(item);
-  };
 
   popup.classList.remove("hidden");
 }
