@@ -19,6 +19,26 @@ const cors = require("cors");
 const axios = require("axios");
 const fs = require("fs");
 
+async function getFatSecretFoodDetails(foodId, accessToken) {
+  try {
+    const response = await axios.get("https://platform.fatsecret.com/rest/server.api", {
+      params: {
+        method: "food.get.v2",
+        food_id: foodId,
+        format: "json",
+      },
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    return response.data?.food || null;
+  } catch (error) {
+    console.error("FatSecret API Error:", error.response?.data || error.message);
+    return null;
+  }
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json());

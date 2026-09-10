@@ -1,3 +1,130 @@
+function css() {
+    return `
+    /* Floating toggle button */
+    #ext-overlay-btn{position:fixed;right:20px;bottom:20px;width:68px;height:68px;border-radius:14px;background:#003594;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 32px rgba(14,165,233,0.18);cursor:pointer;z-index:99999;font-size:28px}
+
+    /* Modal */
+    #ext-overlay-modal{position:fixed;right:24px;bottom:90px;width:70%;max-width:calc(100% - 48px);background:#ffffff;border-radius:12px;padding:14px;box-shadow:0 18px 60px rgba(2,6,23,0.12);z-index:99999;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;max-height:70vh;overflow:auto}
+    #ext-overlay-modal h3{margin:0 0 8px 0;font-size:16px;color:#0f172a}
+
+    /* Inputs & layout */
+    #ext-overlay-modal input, #ext-overlay-modal button, #ext-overlay-modal select{box-sizing:border-box}
+    #ext-overlay-modal input{padding:8px 10px;margin:6px 0;border:1px solid #e6edf3;border-radius:8px;background:#fbfdff}
+    #ext-overlay-modal .row{display:flex;gap:8px;align-items:center}
+    #ext-overlay-modal .row input{flex:1}
+    #ext-overlay-modal .actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+
+    /* Message */
+    #ext-msg{font-size:13px;color:#334155;margin-top:8px;min-height:18px}
+
+    /* Mappings list */
+    #ext-mappings{margin-top:12px;max-height:46vh;overflow:auto;border-top:1px solid #f1f5f9;padding-top:10px}
+    #ext-mappings table{width:100%;border-collapse:collapse;font-size:13px;background:transparent}
+    #ext-mappings th, #ext-mappings td{padding:8px 10px;text-align:left;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+    #ext-mappings th{font-weight:700;color:#0f172a;font-size:13px}
+    #ext-mappings td{color:#0f172a}
+
+    /* Buttons */
+    .ext-btn{background:#003594;color:#fff;border-radius:8px;border:0;padding:6px 10px;cursor:pointer;font-weight:600}
+    .ext-btn.secondary{background:#f1f5ff;color:#0f172a;border:1px solid #e6edf3}
+    .ext-btn.ghost{background:transparent;border:1px solid #e6edf3;color:#0f172a}
+
+    /* Small helpers */
+    #ext-mappings .small{font-size:12px;color:#64748b}
+    #ext-assist{margin-top:10px}
+
+    /* Nutrition Facts Label Styling */
+    .nutrition-label {
+      background: #ffffff;
+      padding: 4px 2px;
+      color: #000000;
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      width: 100%;
+    }
+
+    .label-title {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1.1;
+      margin-bottom: 4px;
+    }
+
+    .label-header {
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin: 4px 0 2px;
+    }
+
+    .label-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.92rem;
+      padding: 3px 0;
+    }
+
+    .label-row.indent {
+      padding-left: 16px;
+    }
+
+    .label-row.double-indent {
+      padding-left: 32px;
+    }
+
+    .label-row.serving-size {
+      font-size: 0.95rem;
+      margin: 6px 0;
+    }
+
+    .calories-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin: 2px 0 4px;
+    }
+
+    .calories-title {
+      font-size: 1.3rem;
+      font-weight: 900;
+    }
+
+    .calories-val {
+      font-size: 1.8rem;
+      font-weight: 900;
+    }
+
+    .label-divider {
+      background: #000000;
+      width: 100%;
+    }
+
+    .label-divider.thick {
+      height: 10px;
+      margin: 4px 0;
+    }
+
+    .label-divider.medium {
+      height: 4px;
+      margin: 4px 0;
+    }
+
+    .label-divider.thin {
+      height: 1px;
+      margin: 2px 0;
+      background: #b0b0b0;
+    }
+
+    .label-footnote {
+      font-size: 0.75rem;
+      line-height: 1.3;
+      margin-top: 8px;
+      color: #333333;
+      border-top: 3px solid #000000;
+      padding-top: 4px;
+    }
+    `;
+  }
+
 (function () {
   function getApiDefault() {
     return (typeof window !== "undefined" && window.MENU_API_URL) || "";
