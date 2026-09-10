@@ -52,6 +52,27 @@ function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+const DAILY_VALUES = {
+  fat: 78,
+  saturated_fat: 20,
+  cholesterol: 300,
+  sodium: 2300,
+  carbohydrate: 275,
+  fiber: 28,
+  vitamin_d: 20,
+  calcium: 1300,
+  iron: 18,
+  potassium: 4700,
+};
+
+function percentDV(nutrientKey, amount) {
+  const dv = DAILY_VALUES[nutrientKey];
+  if (!dv || amount === undefined || amount === null || amount === "") return null;
+  const num = parseFloat(String(amount).replace(/[^0-9.]/g, ""));
+  if (isNaN(num)) return null;
+  return Math.round((num / dv) * 100);
+}
+
 async function fetchOpenFoodFactsProduct(upc) {
   try {
     const cached = JSON.parse(localStorage.getItem(`off-product-${upc}`) || "null");
@@ -203,8 +224,10 @@ function renderProducts(items) {
 
 async function loadNutrition(item) {
   try {
+    const catalogUrl = PRODUCT_CATALOG[item.UPC]?.[2];
     let params = new URLSearchParams({
       upc: item.UPC,
+      ...(catalogUrl ? { url: catalogUrl } : {} ),
     });
 
     let res = await fetch(getApiBase() + NUTRITION_PATH + "?" + params.toString());

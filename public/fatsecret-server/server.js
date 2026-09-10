@@ -175,7 +175,7 @@ async function getFatSecretToken() {
     const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
     const resp = await axios.post(
       "https://oauth.fatsecret.com/connect/token",
-      "grant_type=client_credentials&scope=basic barcode",
+      "grant_type=client_credentials&scope=premier barcode",
       {
         headers: {
           Authorization: `Basic ${auth}`,
