@@ -1,47 +1,216 @@
 function css() {
     return `
     /* Floating toggle button */
-    #ext-overlay-btn{position:fixed;right:20px;bottom:20px;width:68px;height:68px;border-radius:14px;background:#003594;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 32px rgba(14,165,233,0.18);cursor:pointer;z-index:99999;font-size:28px}
+    #ext-overlay-btn {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      width: 68px;
+      height: 68px;
+      border-radius: 16px;
+      background: #003594;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 12px 32px rgba(0, 53, 148, 0.25);
+      cursor: pointer;
+      z-index: 99999;
+      font-size: 28px;
+      transition: transform 0.2s ease, background 0.2s ease;
+    }
+    #ext-overlay-btn:hover {
+      transform: scale(1.05);
+      background: #002670;
+    }
 
-    /* Modal */
-    #ext-overlay-modal{position:fixed;right:24px;bottom:90px;width:70%;max-width:calc(100% - 48px);background:#ffffff;border-radius:12px;padding:14px;box-shadow:0 18px 60px rgba(2,6,23,0.12);z-index:99999;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;max-height:70vh;overflow:auto}
-    #ext-overlay-modal h3{margin:0 0 8px 0;font-size:16px;color:#0f172a}
+    /* Modal Container */
+    #ext-overlay-modal {
+      position: fixed;
+      right: 24px;
+      bottom: 100px;
+      width: 420px;
+      max-width: calc(100% - 48px);
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.15);
+      z-index: 99999;
+      font-family: Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      max-height: 75vh;
+      overflow-y: auto;
+      box-sizing: border-box;
+    }
+    #ext-overlay-modal h3 {
+      margin: 0 0 12px 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
+    }
 
-    /* Inputs & layout */
-    #ext-overlay-modal input, #ext-overlay-modal button, #ext-overlay-modal select{box-sizing:border-box}
-    #ext-overlay-modal input{padding:8px 10px;margin:6px 0;border:1px solid #e6edf3;border-radius:8px;background:#fbfdff}
-    #ext-overlay-modal .row{display:flex;gap:8px;align-items:center}
-    #ext-overlay-modal .row input{flex:1}
-    #ext-overlay-modal .actions{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+    /* Inputs & Layout Structure */
+    #ext-overlay-modal input, 
+    #ext-overlay-modal button, 
+    #ext-overlay-modal select {
+      box-sizing: border-box;
+      font-family: inherit;
+    }
+    #ext-overlay-modal input {
+      width: 100%;
+      padding: 10px 12px;
+      margin: 6px 0;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #f8fafc;
+      font-size: 14px;
+      color: #0f172a;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+    #ext-overlay-modal input:focus {
+      outline: none;
+      border-color: #003594;
+      background: #ffffff;
+    }
+    #ext-overlay-modal .row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      width: 100%;
+    }
+    #ext-overlay-modal .row input {
+      flex: 1;
+      margin: 6px 0;
+    }
+    #ext-overlay-modal .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
+    }
 
-    /* Message */
-    #ext-msg{font-size:13px;color:#334155;margin-top:8px;min-height:18px}
+    /* Feedback Message */
+    #ext-msg {
+      font-size: 13px;
+      color: #475569;
+      margin-top: 10px;
+      min-height: 18px;
+      font-weight: 500;
+    }
 
-    /* Mappings list */
-    #ext-mappings{margin-top:12px;max-height:46vh;overflow:auto;border-top:1px solid #f1f5f9;padding-top:10px}
-    #ext-mappings table{width:100%;border-collapse:collapse;font-size:13px;background:transparent}
-    #ext-mappings th, #ext-mappings td{padding:8px 10px;text-align:left;border-bottom:1px solid #f1f5f9;vertical-align:middle}
-    #ext-mappings th{font-weight:700;color:#0f172a;font-size:13px}
-    #ext-mappings td{color:#0f172a}
+    /* Mappings Table List */
+    #ext-mappings {
+      margin-top: 16px;
+      max-height: 46vh;
+      overflow-y: auto;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 12px;
+    }
+    #ext-mappings table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      background: transparent;
+    }
+    #ext-mappings th, 
+    #ext-mappings td {
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
+    }
+    #ext-mappings th {
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 13px;
+      background: #f8fafc;
+      position: sticky;
+      top: 0;
+    }
+    #ext-mappings td {
+      color: #334155;
+    }
 
     /* Buttons */
-    .ext-btn{background:#003594;color:#fff;border-radius:8px;border:0;padding:6px 10px;cursor:pointer;font-weight:600}
-    .ext-btn.secondary{background:#f1f5ff;color:#0f172a;border:1px solid #e6edf3}
-    .ext-btn.ghost{background:transparent;border:1px solid #e6edf3;color:#0f172a}
+    .ext-btn {
+      background: #003594;
+      color: #fff;
+      border-radius: 8px;
+      border: 0;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: background 0.2s ease;
+    }
+    .ext-btn:hover {
+      background: #002670;
+    }
+    .ext-btn.secondary {
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #cbd5e1;
+    }
+    .ext-btn.secondary:hover {
+      background: #e2e8f0;
+    }
+    .ext-btn.ghost {
+      background: transparent;
+      border: 1px solid #cbd5e1;
+      color: #0f172a;
+    }
+    .ext-btn.ghost:hover {
+      background: #f8fafc;
+    }
 
-    /* Small helpers & targeted cell hooks */
-    #ext-mappings .small{font-size:12px;color:#64748b}
-    #ext-assist{margin-top:10px}
-    .ext-prod-cell{}
-    .ext-inserted-cell{}
-    .ext-expires-cell{}
+    /* Small Helpers & Cell Hooks */
+    #ext-mappings .small {
+      font-size: 12px;
+      color: #64748b;
+    }
+    #ext-assist {
+      margin-top: 12px;
+    }
+    .ext-prod-cell {}
+    .ext-inserted-cell {}
+    .ext-expires-cell {}
 
-    /* Duplicate confirmation popup */
-    .confirm-popup{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:100000}
-    .confirm-popup.hidden{display:none}
-    .confirm-box{background:#fff;padding:20px;border-radius:10px;box-shadow:0 10px 25px rgba(0,0,0,0.2);max-width:320px;width:100%;text-align:center}
-    .confirm-box p{margin:0 0 16px 0;font-size:14px;color:#0f172a}
-    .confirm-actions{display:flex;justify-content:center;gap:8px}
+    /* Duplicate Confirmation Popup */
+    .confirm-popup {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(2px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100000;
+    }
+    .confirm-popup.hidden {
+      display: none;
+    }
+    .confirm-box {
+      background: #fff;
+      padding: 24px;
+      border-radius: 14px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+      max-width: 320px;
+      width: 100%;
+      text-align: center;
+    }
+    .confirm-box p {
+      margin: 0 0 20px 0;
+      font-size: 15px;
+      color: #0f172a;
+      font-weight: 500;
+    }
+    .confirm-actions {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
     `;
   }
 
