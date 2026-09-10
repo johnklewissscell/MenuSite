@@ -29,99 +29,19 @@ function css() {
     .ext-btn.secondary{background:#f1f5ff;color:#0f172a;border:1px solid #e6edf3}
     .ext-btn.ghost{background:transparent;border:1px solid #e6edf3;color:#0f172a}
 
-    /* Small helpers */
+    /* Small helpers & targeted cell hooks */
     #ext-mappings .small{font-size:12px;color:#64748b}
     #ext-assist{margin-top:10px}
+    .ext-prod-cell{}
+    .ext-inserted-cell{}
+    .ext-expires-cell{}
 
-    /* Nutrition Facts Label Styling */
-    .nutrition-label {
-      background: #ffffff;
-      padding: 4px 2px;
-      color: #000000;
-      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
-      width: 100%;
-    }
-
-    .label-title {
-      font-size: 2rem;
-      font-weight: 800;
-      line-height: 1.1;
-      margin-bottom: 4px;
-    }
-
-    .label-header {
-      font-weight: 700;
-      font-size: 0.9rem;
-      margin: 4px 0 2px;
-    }
-
-    .label-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.92rem;
-      padding: 3px 0;
-    }
-
-    .label-row.indent {
-      padding-left: 16px;
-    }
-
-    .label-row.double-indent {
-      padding-left: 32px;
-    }
-
-    .label-row.serving-size {
-      font-size: 0.95rem;
-      margin: 6px 0;
-    }
-
-    .calories-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      margin: 2px 0 4px;
-    }
-
-    .calories-title {
-      font-size: 1.3rem;
-      font-weight: 900;
-    }
-
-    .calories-val {
-      font-size: 1.8rem;
-      font-weight: 900;
-    }
-
-    .label-divider {
-      background: #000000;
-      width: 100%;
-    }
-
-    .label-divider.thick {
-      height: 10px;
-      margin: 4px 0;
-    }
-
-    .label-divider.medium {
-      height: 4px;
-      margin: 4px 0;
-    }
-
-    .label-divider.thin {
-      height: 1px;
-      margin: 2px 0;
-      background: #b0b0b0;
-    }
-
-    .label-footnote {
-      font-size: 0.75rem;
-      line-height: 1.3;
-      margin-top: 8px;
-      color: #333333;
-      border-top: 3px solid #000000;
-      padding-top: 4px;
-    }
+    /* Duplicate confirmation popup */
+    .confirm-popup{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:100000}
+    .confirm-popup.hidden{display:none}
+    .confirm-box{background:#fff;padding:20px;border-radius:10px;box-shadow:0 10px 25px rgba(0,0,0,0.2);max-width:320px;width:100%;text-align:center}
+    .confirm-box p{margin:0 0 16px 0;font-size:14px;color:#0f172a}
+    .confirm-actions{display:flex;justify-content:center;gap:8px}
     `;
   }
 
