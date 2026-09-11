@@ -241,25 +241,25 @@
   }
 
   function askDuplicateUPC() {
-  return new Promise((resolve) => {
-    const popup = document.getElementById("duplicate-upc-popup");
-    if (!popup) {
-      resolve(confirm("This UPC is already saved. Replace it?"));
-      return;
-    }
-    popup.classList.remove("hidden");
+    return new Promise((resolve) => {
+      const popup = document.getElementById("duplicate-upc-popup");
+      if (!popup) {
+        resolve(confirm("This UPC is already saved. Replace it?"));
+        return;
+      }
+      popup.classList.remove("hidden");
 
-    document.getElementById("dup-yes").onclick = () => {
-      popup.classList.add("hidden");
-      resolve(true);
-    };
+      document.getElementById("dup-yes").onclick = () => {
+        popup.classList.add("hidden");
+        resolve(true);
+      };
 
-    document.getElementById("dup-no").onclick = () => {
-      popup.classList.add("hidden");
-      resolve(false);
-    };
-  });
-}
+      document.getElementById("dup-no").onclick = () => {
+        popup.classList.add("hidden");
+        resolve(false);
+      };
+    });
+  }
 
   async function mappingExists(upc) {
     const local = getLocalMappings();
@@ -276,123 +276,130 @@
   }
 
   async function addProduct(e) {
-  if (e && e.preventDefault) e.preventDefault();
-  if (e && e.stopPropagation) e.stopPropagation();
-  if (e && e.currentTarget) try { e.currentTarget.blur(); } catch (_) {}
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+    if (e && e.currentTarget)
+      try {
+        e.currentTarget.blur();
+      } catch (_) {}
 
-  const upcEl = document.getElementById("ext-upc");
-  const nameEl = document.getElementById("ext-name");
-  const brandEl = document.getElementById("ext-brand");
+    const upcEl = document.getElementById("ext-upc");
+    const nameEl = document.getElementById("ext-name");
+    const brandEl = document.getElementById("ext-brand");
 
-  const upc = upcEl && upcEl.value.trim();
-  const name = nameEl && nameEl.value.trim();
-  const brand = brandEl && brandEl.value.trim();
+    const upc = upcEl && upcEl.value.trim();
+    const name = nameEl && nameEl.value.trim();
+    const brand = brandEl && brandEl.value.trim();
 
-  const msg = document.getElementById("ext-msg");
-  if (!upc) {
-    if (msg) msg.textContent = "Enter UPC first";
-    return;
-  }
+    const msg = document.getElementById("ext-msg");
+    if (!upc) {
+      if (msg) msg.textContent = "Enter UPC first";
+      return;
+    }
 
-  if (await mappingExists(upc)) {
-    const ok = await askDuplicateUPC();
-    if (!ok) return;
-  }
+    if (await mappingExists(upc)) {
+      const ok = await askDuplicateUPC();
+      if (!ok) return;
+    }
 
-  const expireValRaw =
-    (document.getElementById("ext-expire") &&
-      document.getElementById("ext-expire").value) ||
-    "";
+    const expireValRaw =
+      (document.getElementById("ext-expire") &&
+        document.getElementById("ext-expire").value) ||
+      "";
 
-  const expireVal = String(expireValRaw).trim().toUpperCase();
+    const expireVal = String(expireValRaw).trim().toUpperCase();
 
-  const data = {
-    product_name: name || undefined,
-    brands: brand || undefined,
-  };
+    const data = {
+      product_name: name || undefined,
+      brands: brand || undefined,
+    };
 
-  const existing = getLocalMappings()[upc];
-  if (existing && existing.data && existing.data._insertedAt) {
-    data._insertedAt = existing.data._insertedAt;
-  } else {
-    data._insertedAt = new Date().toISOString();
-  }
+    const existing = getLocalMappings()[upc];
+    if (existing && existing.data && existing.data._insertedAt) {
+      data._insertedAt = existing.data._insertedAt;
+    } else {
+      data._insertedAt = new Date().toISOString();
+    }
 
-  if (expireVal === "NONE") {
-    delete data._expiresAt;
-  } else if (expireVal) {
+    if (expireVal === "NONE") {
+      delete data._expiresAt;
+    } else if (expireVal) {
+      try {
+        const d = new Date(expireVal);
+        if (!isNaN(d.getTime())) {
+          data._expiresAt = d.toISOString();
+        }
+      } catch (e) {}
+    }
+
+    Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
+
     try {
-      const d = new Date(expireVal);
-      if (!isNaN(d.getTime())) {
-        data._expiresAt = d.toISOString();
+      let saved = false;
+      try {
+        const body = await fetchJSONWithFallback("/mappings", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ upc, data }),
+        });
+        if (body && body.ok) saved = true;
+      } catch (e) {
+        saved = false;
       }
-    } catch (e) {}
-  }
 
-  Object.keys(data).forEach((k) => data[k] === undefined && delete data[k]);
-
-  try {
-    let saved = false;
-    try {
-      const body = await fetchJSONWithFallback("/mappings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ upc, data }),
-      });
-      if (body && body.ok) saved = true;
-    } catch (e) {
-      saved = false;
-    }
-
-    if (!saved) {
-      const lm = getLocalMappings();
-      lm[upc] = { source: "local", data };
-      saveLocalMappings(lm);
-      if (msg) msg.textContent = "Saved mapping locally.";
-    } else {
-      if (msg) msg.textContent = "Saved mapping to server.";
-    }
-
-    loadMappings();
-
-    const j = await fetchProductForUPC(upc, data);
-    if (j && j.found) {
-      insertProductToPageFromProduct(j.product, upc);
-      if (msg) msg.textContent = "Added to page. Source: " + (j.source || "unknown");
-      setDebug(j);
-    } else {
-      if (data && (data.product_name || (data.images && data.images.length))) {
-        insertProductToPageFromProduct(
-          {
-            product_name: data.product_name || "",
-            brands: data.brands || "",
-            images: data.images || [],
-          },
-          upc
-        );
-        if (msg) msg.textContent = "Saved mapping and inserted manual data to page.";
+      if (!saved) {
+        const lm = getLocalMappings();
+        lm[upc] = { source: "local", data };
+        saveLocalMappings(lm);
+        if (msg) msg.textContent = "Saved mapping locally.";
       } else {
+        if (msg) msg.textContent = "Saved mapping to server.";
+      }
+
+      loadMappings();
+
+      const j = await fetchProductForUPC(upc, data);
+      if (j && j.found) {
+        insertProductToPageFromProduct(j.product, upc);
         if (msg)
-          msg.textContent = saved
-            ? "Saved mapping but product lookup returned not found."
-            : "Saved locally but product lookup returned not found.";
+          msg.textContent = "Added to page. Source: " + (j.source || "unknown");
+        setDebug(j);
+      } else {
+        if (
+          data &&
+          (data.product_name || (data.images && data.images.length))
+        ) {
+          insertProductToPageFromProduct(
+            {
+              product_name: data.product_name || "",
+              brands: data.brands || "",
+              images: data.images || [],
+            },
+            upc,
+          );
+          if (msg)
+            msg.textContent = "Saved mapping and inserted manual data to page.";
+        } else {
+          if (msg)
+            msg.textContent = saved
+              ? "Saved mapping but product lookup returned not found."
+              : "Saved locally but product lookup returned not found.";
+        }
+        setDebug(j || {});
       }
-      setDebug(j || {});
+
+      try {
+        const modalEl = document.getElementById("ext-overlay-modal");
+        if (modalEl) {
+          modalEl.style.display = "block";
+          localStorage.setItem("ext_modal_open", "1");
+        }
+      } catch (e) {}
+    } catch (e) {
+      if (msg) msg.textContent = "Network error: " + (e.message || e);
+      setDebug({ error: e.message || e });
     }
-
-    try {
-      const modalEl = document.getElementById("ext-overlay-modal");
-      if (modalEl) {
-        modalEl.style.display = "block";
-        localStorage.setItem("ext_modal_open", "1");
-      }
-    } catch (e) {}
-
-  } catch (e) {
-    if (msg) msg.textContent = "Network error: " + (e.message || e);
-    setDebug({ error: e.message || e });
   }
-}
 
   async function loadMappings() {
     const list = document.getElementById("ext-mappings-list");
@@ -443,17 +450,29 @@
   async function renderMappings(obj) {
     const list = document.getElementById("ext-mappings-list");
     const getCatalogProduct = (upc) => {
-      const loaded = (window.allProducts || []).find((product) => product.UPC === upc);
-      if (loaded) return { name: loaded.TITLE || loaded.name || "", brand: loaded.BRAND || loaded.brand || "" };
+      const loaded = (window.allProducts || []).find(
+        (product) => product.UPC === upc,
+      );
+      if (loaded)
+        return {
+          name: loaded.TITLE || loaded.name || "",
+          brand: loaded.BRAND || loaded.brand || "",
+        };
       const catalog = window.productCatalog?.[upc];
-      return catalog ? { name: catalog[1], brand: catalog[0] } : { name: `UPC ${upc}`, brand: "" };
+      return catalog
+        ? { name: catalog[1], brand: catalog[0] }
+        : { name: `UPC ${upc}`, brand: "" };
     };
     const rows = Object.keys(obj || {}).sort((a, b) => {
       const getTitle = (upc) => {
         const mapping = obj[upc];
         const data = mapping?.data || mapping || {};
 
-        const name = data.product_name || data.title || data.food_name || getCatalogProduct(upc).name;
+        const name =
+          data.product_name ||
+          data.title ||
+          data.food_name ||
+          getCatalogProduct(upc).name;
 
         return name.trim().toLowerCase();
       };
@@ -479,7 +498,10 @@
         mappingObj.title ||
         mappingObj.food_name ||
         getCatalogProduct(upc).name;
-      let brand = mappingObj.brands || mappingObj.brand_name || getCatalogProduct(upc).brand;
+      let brand =
+        mappingObj.brands ||
+        mappingObj.brand_name ||
+        getCatalogProduct(upc).brand;
       const inserted = mappingObj._insertedAt || mapping._insertedAt || "";
       const expires = mappingObj._expiresAt || "";
       const tr = document.createElement("tr");
@@ -557,19 +579,27 @@
       list.innerHTML = "";
       list.appendChild(table);
       setTimeout(() => {
-  const tbody = document.querySelector("#ext-mappings table tbody");
-  if (!tbody) return;
+        const tbody = document.querySelector("#ext-mappings table tbody");
+        if (!tbody) return;
 
-  const rows = Array.from(tbody.querySelectorAll("tr"));
+        const rows = Array.from(tbody.querySelectorAll("tr"));
 
-  rows.sort((a, b) => {
-    const aText = a.querySelector(".ext-prod-cell")?.innerText?.trim().toLowerCase() || "";
-    const bText = b.querySelector(".ext-prod-cell")?.innerText?.trim().toLowerCase() || "";
-    return aText.localeCompare(bText);
-  });
+        rows.sort((a, b) => {
+          const aText =
+            a
+              .querySelector(".ext-prod-cell")
+              ?.innerText?.trim()
+              .toLowerCase() || "";
+          const bText =
+            b
+              .querySelector(".ext-prod-cell")
+              ?.innerText?.trim()
+              .toLowerCase() || "";
+          return aText.localeCompare(bText);
+        });
 
-  rows.forEach(r => tbody.appendChild(r));
-}, 500);
+        rows.forEach((r) => tbody.appendChild(r));
+      }, 500);
     }
   }
 
