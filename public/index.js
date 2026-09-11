@@ -1,18 +1,66 @@
 const NUTRITION_PATH = "/nutrition";
 
 const PRODUCT_CATALOG = {
-  "0028400042437": ["Doritos", "Reduced Fat Nacho Cheese Flavored Tortilla Chips", "https://foods.fatsecret.com/calories-nutrition/doritos/reduced-fat-nacho-cheese"],
-  "0016571954369": ["Sparkling Ice", "Fruit Punch Sparkling Water", "https://foods.fatsecret.com/calories-nutrition/talking-rain/sparkling-ice---black-raspberry"],
-  "0041900072827": ["TruMoo", "Chocolate Fat Free Milk", "https://foods.fatsecret.com/calories-nutrition/trumoo/chocolate-fat-free-milk"],
-  "0028400239349": ["Lay's", "Kettle Cooked Potato Chips", "https://foods.fatsecret.com/calories-nutrition/lays/kettle-cooked-original-40%25-less-fat"],
-  "0016571959203": ["Sparkling Ice", "Sparkling Ice", "https://foods.fatsecret.com/calories-nutrition/talking-rain/sparkling-ice-orange-mango-(bottle)"],
-  "0016571940355": ["Sparkling Ice", "Classic Lemonade Flavored Sparkling Water", "https://foods.fatsecret.com/calories-nutrition/talking-rain/sparkling-ice-lemonade-(bottle)"],
-  "0028400243063": ["Lay's", "Kettle Cooked Jalapeno Cheddar Flavored Potato Chips", "https://foods.fatsecret.com/calories-nutrition/lays/kettle-cooked-jalapeño-cheddar-potato-chips"],
-  "0076183003145": ["Bluetriton Brands", "Pure Life", "https://foods.fatsecret.com/calories-nutrition/snapple/diet-peach-iced-tea-(16-oz)"],
-  "0853004004952": ["Core", "Nutrient Enhanced Water", "https://foods.fatsecret.com/calories-nutrition/core/core-hydration"],
-  "0000006827465": ["Snapple", "Peach Tea", "https://foods.fatsecret.com/calories-nutrition/nestle/pure-life-purified-water-(bottle)"],
-  "0025293001398": ["Silk", "Very Vanilla Soymilk, Single Serve", "https://foods.fatsecret.com/calories-nutrition/silk/very-vanilla-soymilk"],
-  "0030100215981": ["Kellogg's", "Scooby-Doo! Graham Cracker Snacks Cinnamon", "https://foods.fatsecret.com/calories-nutrition/keebler/scooby-doo-baked-cinnamon-graham-cracker-sticks"],
+  "0028400042437": [
+    "Doritos",
+    "Reduced Fat Nacho Cheese Flavored Tortilla Chips",
+    "https://foods.fatsecret.com/calories-nutrition/doritos/reduced-fat-nacho-cheese",
+  ],
+  "0016571954369": [
+    "Sparkling Ice",
+    "Fruit Punch Sparkling Water",
+    "https://foods.fatsecret.com/calories-nutrition/talking-rain/sparkling-ice---black-raspberry",
+  ],
+  "0041900072827": [
+    "TruMoo",
+    "Chocolate Fat Free Milk",
+    "https://foods.fatsecret.com/calories-nutrition/trumoo/chocolate-fat-free-milk",
+  ],
+  "0028400239349": [
+    "Lay's",
+    "Kettle Cooked Potato Chips",
+    "https://foods.fatsecret.com/calories-nutrition/lays/kettle-cooked-original-40%25-less-fat",
+  ],
+  "0016571959203": [
+    "Sparkling Ice",
+    "Sparkling Ice",
+    "https://foods.fatsecret.com/calories-nutrition/talking-rain/sparkling-ice-orange-mango-(bottle)",
+  ],
+  "0016571940355": [
+    "Sparkling Ice",
+    "Classic Lemonade Flavored Sparkling Water",
+    "https://foods.fatsecret.com/calories-nutrition/talking-rain/sparkling-ice-lemonade-(bottle)",
+  ],
+  "0028400243063": [
+    "Lay's",
+    "Kettle Cooked Jalapeno Cheddar Flavored Potato Chips",
+    "https://foods.fatsecret.com/calories-nutrition/lays/kettle-cooked-jalapeño-cheddar-potato-chips",
+  ],
+  "0076183003145": [
+    "Bluetriton Brands",
+    "Pure Life",
+    "https://foods.fatsecret.com/calories-nutrition/snapple/diet-peach-iced-tea-(16-oz)",
+  ],
+  "0853004004952": [
+    "Core",
+    "Nutrient Enhanced Water",
+    "https://foods.fatsecret.com/calories-nutrition/core/core-hydration",
+  ],
+  "0000006827465": [
+    "Snapple",
+    "Peach Tea",
+    "https://foods.fatsecret.com/calories-nutrition/nestle/pure-life-purified-water-(bottle)",
+  ],
+  "0025293001398": [
+    "Silk",
+    "Very Vanilla Soymilk, Single Serve",
+    "https://foods.fatsecret.com/calories-nutrition/silk/very-vanilla-soymilk",
+  ],
+  "0030100215981": [
+    "Kellogg's",
+    "Scooby-Doo! Graham Cracker Snacks Cinnamon",
+    "https://foods.fatsecret.com/calories-nutrition/keebler/scooby-doo-baked-cinnamon-graham-cracker-sticks",
+  ],
 };
 
 if (typeof window !== "undefined") window.productCatalog = PRODUCT_CATALOG;
@@ -27,7 +75,9 @@ async function fetchJSONWithFallback(path, opts) {
   const apiBase = getApiBase();
   const urls = [];
   if (!apiBase) {
-    throw new Error("No public API URL configured. Set window.MENU_API_URL to your backend host.");
+    throw new Error(
+      "No public API URL configured. Set window.MENU_API_URL to your backend host.",
+    );
   }
   urls.push(`${apiBase}${path}`);
   for (const u of urls) {
@@ -73,7 +123,8 @@ const DAILY_VALUES = {
 
 function percentDV(nutrientKey, amount) {
   const dv = DAILY_VALUES[nutrientKey];
-  if (!dv || amount === undefined || amount === null || amount === "") return null;
+  if (!dv || amount === undefined || amount === null || amount === "")
+    return null;
   const num = parseFloat(String(amount).replace(/[^0-9.]/g, ""));
   if (isNaN(num)) return null;
   return Math.round((num / dv) * 100);
@@ -81,19 +132,28 @@ function percentDV(nutrientKey, amount) {
 
 async function fetchOpenFoodFactsProduct(upc) {
   try {
-    const cached = JSON.parse(localStorage.getItem(`off-product-${upc}`) || "null");
+    const cached = JSON.parse(
+      localStorage.getItem(`off-product-${upc}`) || "null",
+    );
     if (cached?.product_name) return cached;
-    const res = await fetch(`https://world.openfoodfacts.org/api/v0/product/${upc}.json`);
+    const res = await fetch(
+      `https://world.openfoodfacts.org/api/v0/product/${upc}.json`,
+    );
     const data = await res.json();
     const product = data && data.product;
     if (!product) return null;
     const result = {
       product_name: product.product_name || product.generic_name || "",
       brand_name: product.brands || "",
-      description: product.generic_name || product.description || product.ingredients_text || "",
+      description:
+        product.generic_name ||
+        product.description ||
+        product.ingredients_text ||
+        "",
       images: product.image_front_url ? [product.image_front_url] : [],
     };
-    if (result.product_name) localStorage.setItem(`off-product-${upc}`, JSON.stringify(result));
+    if (result.product_name)
+      localStorage.setItem(`off-product-${upc}`, JSON.stringify(result));
     return result;
   } catch (e) {
     return null;
@@ -103,33 +163,46 @@ async function fetchOpenFoodFactsProduct(upc) {
 async function loadMappings() {
   const container = document.getElementById("menu-container");
 
-  try {    
+  try {
     const mappings = await fetchJSONWithFallback("/mappings");
     const upcs = Object.keys(mappings || {}).reverse();
 
-    const instantItems = upcs.map((upc) => {
-      const catalog = PRODUCT_CATALOG[upc];
-      if (!catalog) return null;
-      const [brand, title] = catalog;
-      return { UPC: upc, TITLE: title, BRAND: brand, DESCRIPTION: "", IMAGES: "", name: title, brand, description: "", productImg: "" };
-    }).filter(Boolean);
+    const instantItems = upcs
+      .map((upc) => {
+        const catalog = PRODUCT_CATALOG[upc];
+        if (!catalog) return null;
+        const [brand, title] = catalog;
+        return {
+          UPC: upc,
+          TITLE: title,
+          BRAND: brand,
+          DESCRIPTION: "",
+          IMAGES: "",
+          name: title,
+          brand,
+          description: "",
+          productImg: "",
+        };
+      })
+      .filter(Boolean);
     allProducts = instantItems;
     window.allProducts = allProducts;
     renderProducts(allProducts);
-    
+
     const loadProduct = async (upc) => {
       const offProduct = await fetchOpenFoodFactsProduct(upc);
-      if (offProduct?.product_name) return {
-        UPC: upc,
-        TITLE: offProduct.product_name,
-        BRAND: offProduct.brand_name || "",
-        DESCRIPTION: offProduct.description || "",
-        IMAGES: offProduct.images?.[0] || "",
-        name: toTitleCase(offProduct.product_name),
-        brand: offProduct.brand_name || "",
-        description: offProduct.description || "",
-        productImg: offProduct.images?.[0] || "",
-      };
+      if (offProduct?.product_name)
+        return {
+          UPC: upc,
+          TITLE: offProduct.product_name,
+          BRAND: offProduct.brand_name || "",
+          DESCRIPTION: offProduct.description || "",
+          IMAGES: offProduct.images?.[0] || "",
+          name: toTitleCase(offProduct.product_name),
+          brand: offProduct.brand_name || "",
+          description: offProduct.description || "",
+          productImg: offProduct.images?.[0] || "",
+        };
 
       try {
         const productRes = await fetchJSONWithFallback(`/product?upc=${upc}`);
@@ -138,15 +211,31 @@ async function loadMappings() {
           p = productRes.product;
         } else {
           const manual = mappings[upc];
-          if (manual?.data?.product_name || manual?.data?.title || manual?.data?.food_name) p = manual.data;
-          else return { UPC: upc, TITLE: `UPC ${upc}`, BRAND: "", IMAGES: "", name: `UPC ${upc}`, brand: "", description: "", productImg: "" };
+          if (
+            manual?.data?.product_name ||
+            manual?.data?.title ||
+            manual?.data?.food_name
+          )
+            p = manual.data;
+          else
+            return {
+              UPC: upc,
+              TITLE: `UPC ${upc}`,
+              BRAND: "",
+              IMAGES: "",
+              name: `UPC ${upc}`,
+              brand: "",
+              description: "",
+              productImg: "",
+            };
         }
-        
+
         const title = p.product_name || p.title || p.food_name || `UPC ${upc}`;
         const brand = p.brands || p.brand_name || "";
         const desc = p.description || p.generic_name || "";
-        const img = (p.images && p.images.length && p.images[0]) || p.image || "";
-        
+        const img =
+          (p.images && p.images.length && p.images[0]) || p.image || "";
+
         return {
           UPC: upc,
           TITLE: title,
@@ -177,7 +266,7 @@ async function loadMappings() {
     };
 
     const productResults = await Promise.all(upcs.map(loadProduct));
-    
+
     const items = productResults.filter(Boolean).sort((a, b) =>
       a.name.localeCompare(b.name, undefined, {
         sensitivity: "base",
@@ -233,10 +322,12 @@ async function loadNutrition(item) {
     const catalogUrl = PRODUCT_CATALOG[item.UPC]?.[2];
     let params = new URLSearchParams({
       upc: item.UPC,
-      ...(catalogUrl ? { url: catalogUrl } : {} ),
+      ...(catalogUrl ? { url: catalogUrl } : {}),
     });
 
-    let res = await fetch(getApiBase() + NUTRITION_PATH + "?" + params.toString());
+    let res = await fetch(
+      getApiBase() + NUTRITION_PATH + "?" + params.toString(),
+    );
 
     let data = null;
     if (res.ok) {
@@ -259,7 +350,9 @@ async function loadNutrition(item) {
         brand: item.brand || "",
       });
 
-      res = await fetch(getApiBase() + NUTRITION_PATH + "?" + params.toString());
+      res = await fetch(
+        getApiBase() + NUTRITION_PATH + "?" + params.toString(),
+      );
       data = res.ok ? await res.json() : { found: false };
 
       if (data && data.found && data.food) {
@@ -279,14 +372,19 @@ async function loadNutrition(item) {
 
 async function openFatSecretNutritionPage(item) {
   const catalogUrl = PRODUCT_CATALOG[item.UPC]?.[2];
-  const fallbackUrl = catalogUrl || `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(item.UPC || item.name || "")}`;
+  const fallbackUrl =
+    catalogUrl ||
+    `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(item.UPC || item.name || "")}`;
   const tab = window.open(fallbackUrl, "_blank", "noopener,noreferrer");
   if (catalogUrl) return;
   if (!tab) return;
 
   try {
     const response = await fetch(
-      getApiBase() + NUTRITION_PATH + "?" + new URLSearchParams({ upc: item.UPC }),
+      getApiBase() +
+        NUTRITION_PATH +
+        "?" +
+        new URLSearchParams({ upc: item.UPC }),
     );
     const data = response.ok ? await response.json() : null;
     const productUrl = data?.foodUrl || data?.food?.food_url;
@@ -319,10 +417,10 @@ function showNutritionPopup(food) {
   let serving = null;
 
   if (food.servings && food.servings.serving) {
-    const servings = Array.isArray(food.servings.serving) 
-      ? food.servings.serving 
+    const servings = Array.isArray(food.servings.serving)
+      ? food.servings.serving
       : [food.servings.serving];
-    serving = servings.find(s => s.is_default === "1") || servings[0];
+    serving = servings.find((s) => s.is_default === "1") || servings[0];
   }
 
   // Safely formats numerical values, preserving 0 as a valid number
@@ -341,7 +439,7 @@ function showNutritionPopup(food) {
       
       <div class="label-row serving-size">
         <span class="bold">Serving Size</span>
-        <span>${serving?.serving_description || (serving?.metric_serving_amount ? `${serving.metric_serving_amount}${serving.metric_serving_unit || 'g'}` : "1 serving")}</span>
+        <span>${serving?.serving_description || (serving?.metric_serving_amount ? `${serving.metric_serving_amount}${serving.metric_serving_unit || "g"}` : "1 serving")}</span>
       </div>
       <div class="label-divider medium"></div>
       
@@ -453,11 +551,13 @@ function showNutritionPopup(food) {
 function showPopup(item) {
   const popup = document.getElementById("popup");
   const details = document.getElementById("popup-details");
-  const placeholder = "https://placehold.jp/24/cccccc/ffffff/300x300.png?text=No+Image+Available";
+  const placeholder =
+    "https://placehold.jp/24/cccccc/ffffff/300x300.png?text=No+Image+Available";
 
-  const cleanProdImg = item.productImg && item.productImg !== "undefined"
-    ? item.productImg.split("^")[0].trim()
-    : placeholder;
+  const cleanProdImg =
+    item.productImg && item.productImg !== "undefined"
+      ? item.productImg.split("^")[0].trim()
+      : placeholder;
 
   document.getElementById("popup-title").innerText = toTitleCase(item.name);
 

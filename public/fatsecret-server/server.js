@@ -21,20 +21,26 @@ const fs = require("fs");
 
 async function getFatSecretFoodDetails(foodId, accessToken) {
   try {
-    const response = await axios.get("https://platform.fatsecret.com/rest/server.api", {
-      params: {
-        method: "food.get.v2",
-        food_id: foodId,
-        format: "json",
+    const response = await axios.get(
+      "https://platform.fatsecret.com/rest/server.api",
+      {
+        params: {
+          method: "food.get.v2",
+          food_id: foodId,
+          format: "json",
+        },
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       },
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
+    );
 
     return response.data?.food || null;
   } catch (error) {
-    console.error("FatSecret API Error:", error.response?.data || error.message);
+    console.error(
+      "FatSecret API Error:",
+      error.response?.data || error.message,
+    );
     return null;
   }
 }
@@ -67,7 +73,9 @@ try {
 }
 try {
   if (fs.existsSync(fatSecretCachePath)) {
-    const loaded = JSON.parse(fs.readFileSync(fatSecretCachePath, "utf8") || "{}");
+    const loaded = JSON.parse(
+      fs.readFileSync(fatSecretCachePath, "utf8") || "{}",
+    );
     fatSecretCache = loaded;
   }
 } catch (e) {
@@ -92,7 +100,10 @@ function saveOffCache() {
 
 function saveFatSecretCache() {
   try {
-    fs.writeFileSync(fatSecretCachePath, JSON.stringify(fatSecretCache, null, 2));
+    fs.writeFileSync(
+      fatSecretCachePath,
+      JSON.stringify(fatSecretCache, null, 2),
+    );
   } catch (e) {
     console.warn("saveFatSecretCache failed", e.message);
   }
@@ -135,12 +146,16 @@ function setCachedFatSecretAnswer(key, value) {
 
 function isSuspectFatSecretCache(cacheObject) {
   if (!cacheObject || typeof cacheObject !== "object") return false;
-  const entries = Object.values(cacheObject).filter((entry) => entry && entry.food && entry.food.food_name);
+  const entries = Object.values(cacheObject).filter(
+    (entry) => entry && entry.food && entry.food.food_name,
+  );
   if (entries.length < 8) return false;
 
   const counts = new Map();
   for (const entry of entries) {
-    const name = String(entry.food.food_name || "").trim().toLowerCase();
+    const name = String(entry.food.food_name || "")
+      .trim()
+      .toLowerCase();
     if (!name) continue;
     counts.set(name, (counts.get(name) || 0) + 1);
   }
@@ -157,7 +172,10 @@ function shouldUseCachedFatSecretAnswer(entry, fallbackKey = "") {
   const foodName = String(food.food_name || "").trim();
   if (!foodName) return false;
   if (foodName === "Unknown Product" || foodName === "Product") return false;
-  return Boolean(food.servings?.serving && (food.servings.serving.calories || food.servings.serving[0]?.calories));
+  return Boolean(
+    food.servings?.serving &&
+    (food.servings.serving.calories || food.servings.serving[0]?.calories),
+  );
 }
 
 let fatSecretToken = null;
@@ -197,8 +215,12 @@ function escapeRegExp(value) {
 }
 
 function parseValue(rawValue) {
-  if (rawValue === undefined || rawValue === null || rawValue === "") return null;
-  const cleaned = String(rawValue).replace(/,/g, "").replace(/[^\d.-]/g, "").trim();
+  if (rawValue === undefined || rawValue === null || rawValue === "")
+    return null;
+  const cleaned = String(rawValue)
+    .replace(/,/g, "")
+    .replace(/[^\d.-]/g, "")
+    .trim();
   if (!cleaned) return null;
   const numeric = Number(cleaned);
   return Number.isFinite(numeric) ? numeric : null;
@@ -234,8 +256,10 @@ function parseFatSecretPageHtml(html, productName = "", foodUrl = null) {
     .replace(/&amp;/gi, "&");
 
   const titleMatch = cleanedHtml.match(/<h1[^>]*>([^<]+)<\/h1>/i);
-  const brandMatch = cleanedHtml.match(/<h2[^>]*class=["']manufacturer["'][^>]*>\s*(?:<a[^>]*>)?([^<]+)<\/a>\s*<\/h2>/i);
-  
+  const brandMatch = cleanedHtml.match(
+    /<h2[^>]*class=["']manufacturer["'][^>]*>\s*(?:<a[^>]*>)?([^<]+)<\/a>\s*<\/h2>/i,
+  );
+
   const parsedTitle = decodeHtmlEntities(titleMatch?.[1]).trim() || baseName;
   const parsedBrand = decodeHtmlEntities(brandMatch?.[1]).trim() || "";
 
@@ -247,7 +271,7 @@ function parseFatSecretPageHtml(html, productName = "", foodUrl = null) {
       // Direct Regex to capture numbers adjacent to exact label matches
       const regex = new RegExp(
         `(?:${label})(?:<[^>]+>|\\s|:|-)*?([<>]?\\s*\\d+[\\d,.]*)\\s*(?:g|mg|mcg|iu|kcal|calories)?`,
-        "i"
+        "i",
       );
       const match = cleanedHtml.match(regex);
       if (match && match[1]) {
@@ -265,7 +289,11 @@ function parseFatSecretPageHtml(html, productName = "", foodUrl = null) {
   const transFat = fetchFactValue(["Trans Fat"]);
   const cholesterol = fetchFactValue(["Cholesterol"]);
   const sodium = fetchFactValue(["Sodium"]);
-  const carbohydrate = fetchFactValue(["Total Carbohydrate", "Carbs", "Carbohydrate"]);
+  const carbohydrate = fetchFactValue([
+    "Total Carbohydrate",
+    "Carbs",
+    "Carbohydrate",
+  ]);
   const fiber = fetchFactValue(["Dietary Fiber", "Fiber"]);
   const sugar = fetchFactValue(["Total Sugars", "Sugars", "Sugar"]);
   const protein = fetchFactValue(["Protein"]);
@@ -275,13 +303,19 @@ function parseFatSecretPageHtml(html, productName = "", foodUrl = null) {
   const vitaminD = fetchFactValue(["Vitamin D"]);
 
   // Serving description extraction
-  const servingMatch = cleanedHtml.match(/There are\s+<b>\d+\s+calories<\/b>\s+in\s+([^<.]+?)(?:\s+of\s+.+)?\./i);
+  const servingMatch = cleanedHtml.match(
+    /There are\s+<b>\d+\s+calories<\/b>\s+in\s+([^<.]+?)(?:\s+of\s+.+)?\./i,
+  );
   const normalizedPageText = stripHtml(cleanedHtml).replace(/\s+/g, " ").trim();
-  const servingDescriptionFromText = normalizedPageText.match(/Serving\s+Size\s*([A-Za-z0-9.\-]+(?:\s+[A-Za-z0-9.\-]+){0,3})(?=\s*Amount\s+Per\s+Serving|$)/i)?.[1]?.trim();
-  
+  const servingDescriptionFromText = normalizedPageText
+    .match(
+      /Serving\s+Size\s*([A-Za-z0-9.\-]+(?:\s+[A-Za-z0-9.\-]+){0,3})(?=\s*Amount\s+Per\s+Serving|$)/i,
+    )?.[1]
+    ?.trim();
+
   const servingDescription = servingMatch?.[2]
     ? servingMatch[2].replace(/<[^>]+>/g, "").trim()
-    : (servingDescriptionFromText || "1 serving");
+    : servingDescriptionFromText || "1 serving";
 
   const normalizedServingDescription = servingDescription.includes(" of ")
     ? servingDescription.split(/\s+of\s+/i)[0].trim()
@@ -345,12 +379,15 @@ async function scrapeFatSecretUrl(url) {
         const target = $(`*:contains("${label}")`).last();
         if (target.length) {
           // Check the full parent text or adjacent cell text
-          const rowText = target.closest("tr, div").text() || target.parent().text();
-          
+          const rowText =
+            target.closest("tr, div").text() || target.parent().text();
+
           // Match numbers, decimals, or g/mg suffixes attached to numbers
-          const match = rowText.match(new RegExp(`${label}[^0-9]*([0-9]+(?:\\.[0-9]+)?)`, "i")) 
-                     || rowText.match(/([0-9]+(?:\.[0-9]+)?)\s*(?:g|mg|mcg|kcal)?/i);
-          
+          const match =
+            rowText.match(
+              new RegExp(`${label}[^0-9]*([0-9]+(?:\\.[0-9]+)?)`, "i"),
+            ) || rowText.match(/([0-9]+(?:\.[0-9]+)?)\s*(?:g|mg|mcg|kcal)?/i);
+
           if (match && match[1]) {
             return parseFloat(match[1]);
           }
@@ -360,7 +397,8 @@ async function scrapeFatSecretUrl(url) {
     };
 
     // FatSecret standard panel selectors fallback
-    const calories = parseValue(["Calories"]) || parseFloat($(".factValue").eq(0).text()) || 0;
+    const calories =
+      parseValue(["Calories"]) || parseFloat($(".factValue").eq(0).text()) || 0;
     const fat = parseValue(["Total Fat", "Fat"]) || 0;
     const satFat = parseValue(["Saturated Fat"]) || 0;
     const transFat = parseValue(["Trans Fat"]) || 0;
@@ -403,9 +441,17 @@ async function scrapeFatSecretUrl(url) {
   }
 }
 
-async function lookupFatSecretScrape(query, label = "", allowNumericQuery = false, pageValidator = null) {
+async function lookupFatSecretScrape(
+  query,
+  label = "",
+  allowNumericQuery = false,
+  pageValidator = null,
+) {
   const searchQuery = String(query || label || "").trim();
-  if (!searchQuery || (!allowNumericQuery && !shouldUseFatSecretScrapeFallback(searchQuery))) {
+  if (
+    !searchQuery ||
+    (!allowNumericQuery && !shouldUseFatSecretScrapeFallback(searchQuery))
+  ) {
     return { found: false };
   }
 
@@ -424,7 +470,9 @@ async function lookupFatSecretScrape(query, label = "", allowNumericQuery = fals
         },
       });
       const html = searchResp.data || "";
-      const hrefMatches = [...html.matchAll(/href=(['"])(\/calories-nutrition\/[^'\"]+)\1/gi)];
+      const hrefMatches = [
+        ...html.matchAll(/href=(['"])(\/calories-nutrition\/[^'\"]+)\1/gi),
+      ];
 
       for (const match of hrefMatches) {
         const href = match[2];
@@ -466,11 +514,8 @@ async function lookupFatSecretScrape(query, label = "", allowNumericQuery = fals
 async function lookupFatSecretScrapeByBarcode(upc) {
   const barcode = String(upc || "").trim();
   if (!/^\d{8,14}$/.test(barcode)) return { found: false };
-  return lookupFatSecretScrape(
-    barcode,
-    barcode,
-    true,
-    (pageHtml) => pageHtml.includes(barcode),
+  return lookupFatSecretScrape(barcode, barcode, true, (pageHtml) =>
+    pageHtml.includes(barcode),
   );
 }
 
@@ -478,7 +523,12 @@ async function lookupFatSecretNutrition(upc) {
   const normalizedUpc = String(upc || "").trim();
   const cached = getCachedFatSecretAnswer(normalizedUpc);
   if (cached && shouldUseCachedFatSecretAnswer(cached, normalizedUpc)) {
-    return { found: true, food: cached.food, source: "FatSecret Cache", foodUrl: cached.food?.food_url || null };
+    return {
+      found: true,
+      food: cached.food,
+      source: "FatSecret Cache",
+      foodUrl: cached.food?.food_url || null,
+    };
   }
 
   const token = await getFatSecretToken();
@@ -507,7 +557,9 @@ async function lookupFatSecretNutrition(upc) {
 
     const food = findResp.data?.food;
     if (!food || !food.food_id) {
-      console.warn(`FatSecret barcode ${upc}: no food found, status=${findResp.status}`);
+      console.warn(
+        `FatSecret barcode ${upc}: no food found, status=${findResp.status}`,
+      );
       const scraped = await lookupFatSecretScrapeByBarcode(normalizedUpc);
       if (scraped.found) {
         setCachedFatSecretAnswer(normalizedUpc, scraped);
@@ -515,7 +567,7 @@ async function lookupFatSecretNutrition(upc) {
       }
       return { found: false };
     }
-    
+
     console.log(`FatSecret barcode ${upc} found: ${food.food_name}`);
 
     const foodId = food.food_id || food.id || null;
@@ -573,10 +625,17 @@ async function lookupFatSecretNutrition(upc) {
 }
 
 async function searchFatSecretNutrition(query) {
-  const normalizedQuery = String(query || "").trim().toLowerCase();
+  const normalizedQuery = String(query || "")
+    .trim()
+    .toLowerCase();
   const cached = getCachedFatSecretAnswer(normalizedQuery);
   if (cached && shouldUseCachedFatSecretAnswer(cached, normalizedQuery)) {
-    return { found: true, food: cached.food, source: "FatSecret Cache", foodUrl: cached.food?.food_url || null };
+    return {
+      found: true,
+      food: cached.food,
+      source: "FatSecret Cache",
+      foodUrl: cached.food?.food_url || null,
+    };
   }
 
   const token = await getFatSecretToken();
@@ -611,7 +670,8 @@ async function searchFatSecretNutrition(query) {
         ? [searchFoods]
         : [];
 
-    const firstFood = searchList.find((item) => item && (item.food_id || item.id)) || null;
+    const firstFood =
+      searchList.find((item) => item && (item.food_id || item.id)) || null;
     const foodId = firstFood?.food_id || firstFood?.id || null;
     if (!foodId) {
       if (shouldUseFatSecretScrapeFallback(query)) {
@@ -661,7 +721,8 @@ function isLikelyImageUrl(value) {
   const trimmed = value.trim();
   if (!trimmed) return false;
   if (!/^https?:\/\//i.test(trimmed)) return false;
-  if (/(logo|icon|sprite|favicon|pixel|transparent|placeholder)/i.test(trimmed)) return false;
+  if (/(logo|icon|sprite|favicon|pixel|transparent|placeholder)/i.test(trimmed))
+    return false;
   return true;
 }
 
@@ -689,7 +750,11 @@ function extractImageUrlsFromPayload(payload) {
     if (typeof value === "object") {
       for (const [key, child] of Object.entries(value)) {
         const lowerKey = (key || "").toLowerCase();
-        if (lowerKey.includes("image") || lowerKey.includes("img") || lowerKey.includes("photo")) {
+        if (
+          lowerKey.includes("image") ||
+          lowerKey.includes("img") ||
+          lowerKey.includes("photo")
+        ) {
           pushValue(child);
         } else if (typeof child === "object" && child) {
           pushValue(child);
@@ -739,7 +804,10 @@ function mergeProductMetadata(target, payload) {
   }
 
   const imageCandidates = extractImageUrlsFromPayload(payload);
-  if (imageCandidates.length && (!target.images || target.images.length === 0)) {
+  if (
+    imageCandidates.length &&
+    (!target.images || target.images.length === 0)
+  ) {
     target.images = imageCandidates;
   }
 
@@ -959,7 +1027,11 @@ async function lookupUSDANutrition(query) {
 }
 
 app.get("/health", (req, res) => {
-  res.json({ ok: true, service: "worthington-nutrition-api", timestamp: new Date().toISOString() });
+  res.json({
+    ok: true,
+    service: "worthington-nutrition-api",
+    timestamp: new Date().toISOString(),
+  });
 });
 
 app.get("/product", async (req, res) => {
@@ -1027,11 +1099,15 @@ app.get("/product", async (req, res) => {
             foundProduct = {
               product_name: p.product_name || p.generic_name || "Unknown",
               brand_name: p.brands || "",
+              description:
+                p.generic_name || p.ingredients_text || p.description || "",
               images: p.image_front_url ? [p.image_front_url] : [],
               food_id: `off-${v}`,
               food_type: "Product (metadata only)",
             };
-            console.log(`Found ${v} in Open Food Facts: ${foundProduct.product_name}`);
+            console.log(
+              `Found ${v} in Open Food Facts: ${foundProduct.product_name}`,
+            );
             break;
           }
         } catch (e) {
@@ -1189,7 +1265,7 @@ app.get("/nutrition", async (req, res) => {
     if (upc) {
       const gtin13 = upc.replace(/\D/g, "").padStart(13, "0");
       const variants = Array.from(
-        new Set([upc, gtin13, upc.padStart(12, "0"), upc.replace(/^0+/, "")])
+        new Set([upc, gtin13, upc.padStart(12, "0"), upc.replace(/^0+/, "")]),
       ).filter(Boolean);
 
       // FatSecret API lookup
@@ -1213,14 +1289,19 @@ app.get("/nutrition", async (req, res) => {
       try {
         const offResponse = await axios.get(
           `https://world.openfoodfacts.org/api/v0/product/${upc}.json`,
-          { timeout: 5000 }
+          { timeout: 5000 },
         );
         if (offResponse.data?.status === 1 && offResponse.data?.product) {
-          const offFood = convertOFFNutrition(offResponse.data.product, searchTerm);
+          const offFood = convertOFFNutrition(
+            offResponse.data.product,
+            searchTerm,
+          );
           return res.json({
             found: true,
             food: offFood,
-            foodUrl: offResponse.data.product.url || `https://world.openfoodfacts.org/product/${upc}`,
+            foodUrl:
+              offResponse.data.product.url ||
+              `https://world.openfoodfacts.org/product/${upc}`,
             source: "Open Food Facts",
           });
         }
@@ -1323,7 +1404,9 @@ function startServer(port) {
   server.on("error", (err) => {
     listeningFlag = false;
     if (err.code === "EADDRINUSE") {
-      console.error(`Port ${port} is in use. Exiting process so process manager can restart.`);
+      console.error(
+        `Port ${port} is in use. Exiting process so process manager can restart.`,
+      );
       process.exit(1);
     } else {
       console.error("SERVER ERROR:", err.message);
