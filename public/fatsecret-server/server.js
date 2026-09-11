@@ -1057,6 +1057,29 @@ app.get("/health", (req, res) => {
   });
 });
 
+app.get("/fatsecret/redirect", async (req, res) => {
+  const q = (req.query.q || "").trim();
+  const fallback = `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(q)}`;
+  if (!q) return res.redirect(302, fallback);
+  try {
+    const searchUrl = `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(q)}`;
+    const { data: html } = await axios.get(searchUrl, {
+      timeout: 8000,
+      headers: { "User-Agent": "Mozilla/5.0" },
+    });
+    const hrefMatches = [...html.matchAll(/href=(['"])(\/calories-nutrition\/[^'"]+)\1/gi)];
+    for (const match of hrefMatches) {
+      const href = match[2];
+      if (/\/(search|meals|food|photos)\b/i.test(href)) continue;
+      const pageUrl = new URL(href, "https://foods.fatsecret.com").toString();
+      return res.redirect(302, pageUrl);
+    }
+    return res.redirect(302, fallback);
+  } catch (e) {
+    return res.redirect(302, fallback);
+  }
+});
+
 app.get("/product", async (req, res) => {
   try {
     const upc = (req.query.upc || "").trim();

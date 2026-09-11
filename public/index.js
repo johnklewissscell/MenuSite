@@ -597,20 +597,20 @@ function showPopup(item) {
 </button>
   `;
 
-  document.getElementById("nutrition-btn").onclick = () => {
-  const catalogUrl = PRODUCT_CATALOG[item.UPC]?.[2];
-  if (catalogUrl) {
-    window.open(catalogUrl, "_blank", "noopener,noreferrer");
-    return;
-  }
-  const hasRealName = item.name && !/^UPC\s+\d+$/i.test(item.name.trim());
-  if (!hasRealName) {
-    if (item.UPC) window.open(`https://world.openfoodfacts.org/product/${item.UPC}`, "_blank", "noopener,noreferrer");
-    return;
-  }
-  const tab = window.open("", "_blank", "noopener,noreferrer"); // must open synchronously, before the fetch
-  openFirstFatSecretResult(item, tab);
-};
+    document.getElementById("nutrition-btn").onclick = () => {
+    const catalogUrl = PRODUCT_CATALOG[item.UPC]?.[2];
+    if (catalogUrl) {
+      window.open(catalogUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+    const hasRealName = item.name && !/^UPC\s+\d+$/i.test(item.name.trim());
+    if (!hasRealName) {
+      if (item.UPC) window.open(`https://world.openfoodfacts.org/product/${item.UPC}`, "_blank", "noopener,noreferrer");
+      return;
+    }
+    const query = [item.brand, item.name].filter(Boolean).join(" ").trim();
+    window.open(getApiBase() + "/fatsecret/redirect?q=" + encodeURIComponent(query), "_blank", "noopener,noreferrer");
+  };
 // commit comment
   popup.classList.remove("hidden");
 }
