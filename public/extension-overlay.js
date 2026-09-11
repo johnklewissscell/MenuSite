@@ -146,6 +146,7 @@
           if (!dataObj._insertedAt)
             dataObj._insertedAt = new Date().toISOString();
 
+          // try saving to server, fallback to local
           let saved = false;
           try {
             const body = await fetchJSONWithFallback("/mappings", {

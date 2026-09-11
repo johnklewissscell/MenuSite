@@ -596,15 +596,8 @@ function showPopup(item) {
   View Nutrition Facts
 </button>
   `;
-// commit comment
-  popup.classList.remove("hidden");
-}
 
-document.getElementById("close-popup").onclick = () => {
-  document.getElementById("popup").classList.add("hidden");
-};
-
-document.getElementById("nutrition-btn").onclick = () => {
+  document.getElementById("nutrition-btn").onclick = () => {
   const catalogUrl = PRODUCT_CATALOG[item.UPC]?.[2];
   if (catalogUrl) {
     window.open(catalogUrl, "_blank", "noopener,noreferrer");
@@ -617,6 +610,13 @@ document.getElementById("nutrition-btn").onclick = () => {
   }
   const tab = window.open("", "_blank", "noopener,noreferrer"); // must open synchronously, before the fetch
   openFirstFatSecretResult(item, tab);
+};
+// commit comment
+  popup.classList.remove("hidden");
+}
+
+document.getElementById("close-popup").onclick = () => {
+  document.getElementById("popup").classList.add("hidden");
 };
 
 window.renderProducts = renderProducts;
