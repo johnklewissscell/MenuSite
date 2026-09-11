@@ -611,6 +611,7 @@ function showPopup(item) {
     const query = [item.brand, item.name].filter(Boolean).join(" ").trim();
     window.open(getApiBase() + "/fatsecret/redirect?q=" + encodeURIComponent(query), "_blank", "noopener,noreferrer");
   };
+// commit comment
   popup.classList.remove("hidden");
 }
 

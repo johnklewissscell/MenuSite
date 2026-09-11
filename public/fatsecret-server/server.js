@@ -19,6 +19,20 @@ const cors = require("cors");
 const axios = require("axios");
 const fs = require("fs");
 
+app.get("/fatsecret/debug", async (req, res) => {
+  const q = (req.query.q || "").trim();
+  try {
+    const searchUrl = `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(q)}`;
+    const { data: html } = await axios.get(searchUrl, {
+      timeout: 8000,
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
+    });
+    res.json({ length: html.length, snippet: html.slice(0, 3000) });
+  } catch (e) {
+    res.json({ error: e.message });
+  }
+});
+
 async function getFatSecretFoodDetails(foodId, accessToken) {
   try {
     const response = await axios.get(
