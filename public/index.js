@@ -99,8 +99,8 @@ function toTitleCase(str) {
 }
 
 function getFatSecretUrl(item) {
-  const catalogUrl = PRODUCT_CATALOG[item.UPC]?.[2];
-  if (catalogUrl) return catalogUrl;
+  // Open Food Facts product page — direct barcode link, full nutriments table
+  if (item.UPC) return `https://world.openfoodfacts.org/product/${item.UPC}`;
   return `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(item.UPC || item.name || "")}`;
 }
 
@@ -567,11 +567,6 @@ function showPopup(item) {
     </div>
 
     <div class="popup-brand">${item.brand || ""}</div>
-
-    <div class="popup-description">
-      <strong>Description:</strong>
-      <p>${item.description || "No description available."}</p>
-    </div>
 
         <a id="nutrition-btn" class="ext-btn" href="${getFatSecretUrl(item)}" target="_blank" rel="noopener noreferrer"
        style="display:block;text-align:center;text-decoration:none;background-color:#002855;color:#fff;border:none;padding:10px 16px;cursor:pointer;border-radius:4px;width:100%;box-sizing:border-box;">
