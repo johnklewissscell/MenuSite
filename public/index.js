@@ -99,8 +99,8 @@ function toTitleCase(str) {
 }
 
 function getFatSecretUrl(item) {
-  // Open Food Facts product page — direct barcode link, full nutriments table
-  if (item.UPC) return `https://world.openfoodfacts.org/product/${item.UPC}`;
+  const catalogUrl = PRODUCT_CATALOG[item.UPC]?.[2];
+  if (catalogUrl) return catalogUrl;
   return `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(item.UPC || item.name || "")}`;
 }
 
