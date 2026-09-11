@@ -143,7 +143,6 @@
             dataObj._expiresAt = d.toISOString();
           }
 
-          // ensure insertedAt exists
           if (!dataObj._insertedAt)
             dataObj._insertedAt = new Date().toISOString();
 

@@ -101,7 +101,19 @@ function toTitleCase(str) {
 function getFatSecretUrl(item) {
   const catalogUrl = PRODUCT_CATALOG[item.UPC]?.[2];
   if (catalogUrl) return catalogUrl;
-  return `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(item.UPC || item.name || "")}`;
+
+  // A name search only makes sense if we actually have a real name,
+  // not the "UPC 850017142442" placeholder used when nothing was found.
+  const hasRealName = item.name && !/^UPC\s+\d+$/i.test(item.name.trim());
+  if (hasRealName) {
+    const query = [item.brand, item.name].filter(Boolean).join(" ").trim();
+    return `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(query)}`;
+  }
+
+  // No usable name — barcode lookup on Open Food Facts instead of guessing on FatSecret
+  if (item.UPC) return `https://world.openfoodfacts.org/product/${item.UPC}`;
+
+  return `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(item.name || "")}`;
 }
 
 function escapeRegExp(str) {

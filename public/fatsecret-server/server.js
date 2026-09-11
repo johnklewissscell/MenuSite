@@ -49,7 +49,6 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve static files from the parent directory (MenuSite root)
 app.use(express.static(path.join(__dirname, "..")));
 
 const mappingsPath = path.join(__dirname, "mappings.json");
