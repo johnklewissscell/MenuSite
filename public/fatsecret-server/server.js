@@ -1111,7 +1111,6 @@ app.get("/product", async (req, res) => {
             break;
           }
         } catch (e) {
-          // OFF failed, continue
         }
       }
     }

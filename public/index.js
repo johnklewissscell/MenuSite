@@ -573,7 +573,7 @@ function showPopup(item) {
       View Nutrition Facts
     </a>
   `;
-
+// commit comment
   popup.classList.remove("hidden");
 }
 

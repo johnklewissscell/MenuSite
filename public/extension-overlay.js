@@ -23,7 +23,6 @@
           throw new Error("Invalid JSON");
         }
       } catch (e) {
-        /* try next */
       }
     }
     throw new Error("All fetch attempts failed");
