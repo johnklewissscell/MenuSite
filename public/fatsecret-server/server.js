@@ -81,6 +81,28 @@ try {
   console.warn("load fatsecret cache failed", e.message);
 }
 
+app.get("/fatsecret/first-result", async (req, res) => {
+  const q = (req.query.q || "").trim();
+  if (!q) return res.json({ found: false });
+  try {
+    const searchUrl = `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(q)}`;
+    const { data: html } = await axios.get(searchUrl, {
+      timeout: 8000,
+      headers: { "User-Agent": "Mozilla/5.0" },
+    });
+    const hrefMatches = [...html.matchAll(/href=(['"])(\/calories-nutrition\/[^'"]+)\1/gi)];
+    for (const match of hrefMatches) {
+      const href = match[2];
+      if (/\/(search|meals|food|photos)\b/i.test(href)) continue; // skip nav/category links
+      const pageUrl = new URL(href, "https://foods.fatsecret.com").toString();
+      return res.json({ found: true, url: pageUrl });
+    }
+    return res.json({ found: false });
+  } catch (e) {
+    return res.json({ found: false, error: e.message });
+  }
+});
+
 function saveMappings() {
   try {
     fs.writeFileSync(mappingsPath, JSON.stringify(mappings, null, 2));

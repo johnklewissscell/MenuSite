@@ -116,6 +116,18 @@ function getFatSecretUrl(item) {
   return `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(item.name || "")}`;
 }
 
+async function openFirstFatSecretResult(item, tab) {
+  const query = [item.brand, item.name].filter(Boolean).join(" ").trim();
+  const fallback = `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(query)}`;
+  try {
+    const res = await fetch(getApiBase() + "/fatsecret/first-result?" + new URLSearchParams({ q: query }));
+    const data = res.ok ? await res.json() : null;
+    tab.location.href = (data?.found && data.url) ? data.url : fallback;
+  } catch (e) {
+    tab.location.href = fallback;
+  }
+}
+
 function escapeRegExp(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -580,10 +592,9 @@ function showPopup(item) {
 
     <div class="popup-brand">${item.brand || ""}</div>
 
-        <a id="nutrition-btn" class="ext-btn" href="${getFatSecretUrl(item)}" target="_blank" rel="noopener noreferrer"
-       style="display:block;text-align:center;text-decoration:none;background-color:#002855;color:#fff;border:none;padding:10px 16px;cursor:pointer;border-radius:4px;width:100%;box-sizing:border-box;">
-      View Nutrition Facts
-    </a>
+        <button id="nutrition-btn" class="ext-btn" style="background-color:#002855;color:#fff;border:none;padding:10px 16px;cursor:pointer;border-radius:4px;width:100%;">
+  View Nutrition Facts
+</button>
   `;
 // commit comment
   popup.classList.remove("hidden");
@@ -591,6 +602,21 @@ function showPopup(item) {
 
 document.getElementById("close-popup").onclick = () => {
   document.getElementById("popup").classList.add("hidden");
+};
+
+document.getElementById("nutrition-btn").onclick = () => {
+  const catalogUrl = PRODUCT_CATALOG[item.UPC]?.[2];
+  if (catalogUrl) {
+    window.open(catalogUrl, "_blank", "noopener,noreferrer");
+    return;
+  }
+  const hasRealName = item.name && !/^UPC\s+\d+$/i.test(item.name.trim());
+  if (!hasRealName) {
+    if (item.UPC) window.open(`https://world.openfoodfacts.org/product/${item.UPC}`, "_blank", "noopener,noreferrer");
+    return;
+  }
+  const tab = window.open("", "_blank", "noopener,noreferrer"); // must open synchronously, before the fetch
+  openFirstFatSecretResult(item, tab);
 };
 
 window.renderProducts = renderProducts;
