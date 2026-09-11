@@ -1062,20 +1062,28 @@ app.get("/fatsecret/redirect", async (req, res) => {
   const fallback = `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(q)}`;
   if (!q) return res.redirect(302, fallback);
   try {
-    const searchUrl = `https://foods.fatsecret.com/calories-nutrition/search?q=${encodeURIComponent(q)}`;
+    const searchUrl = fallback;
     const { data: html } = await axios.get(searchUrl, {
       timeout: 8000,
-      headers: { "User-Agent": "Mozilla/5.0" },
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" },
     });
-    const hrefMatches = [...html.matchAll(/href=(['"])(\/calories-nutrition\/[^'"]+)\1/gi)];
+
+    const hrefMatches = [
+      ...html.matchAll(/href=(['"])(?:https?:\/\/(?:foods\.)?fatsecret\.com)?(\/calories-nutrition\/[a-z0-9-]+\/[a-z0-9%().-]+)\1/gi),
+    ];
+
     for (const match of hrefMatches) {
       const href = match[2];
-      if (/\/(search|meals|food|photos)\b/i.test(href)) continue;
+      if (/\/(search|meals|photos)\b/i.test(href)) continue;
       const pageUrl = new URL(href, "https://foods.fatsecret.com").toString();
+      console.log("Redirecting", q, "->", pageUrl);
       return res.redirect(302, pageUrl);
     }
+
+    console.warn("No fatsecret match found for query:", q, "| html length:", html.length);
     return res.redirect(302, fallback);
   } catch (e) {
+    console.warn("FatSecret redirect scrape failed:", e.message);
     return res.redirect(302, fallback);
   }
 });
