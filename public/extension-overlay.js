@@ -241,6 +241,11 @@
         localStorage.removeItem("ext_modal_open");
         return;
       }
+      if (loginModal.style.display === "block") {
+        loginModal.style.display = "none";
+        document.getElementById("ext-login-password").value = "";
+        return;
+      }
       const token = sessionStorage.getItem("menu_admin_token");
       let authenticated = false;
       if (token) {
