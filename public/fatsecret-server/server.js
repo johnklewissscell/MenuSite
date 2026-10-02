@@ -18,6 +18,7 @@ const express = require("express");
 const cors = require("cors");
 const axios = require("axios");
 const fs = require("fs");
+const crypto = require("crypto");
 
 async function getFatSecretFoodDetails(foodId, accessToken) {
   try {
@@ -50,6 +51,71 @@ app.use(cors());
 app.use(express.json());
 
 app.use(express.static(path.join(__dirname, "..")));
+
+const adminLoginAttempts = new Map();
+const ADMIN_TOKEN_TTL_MS = 8 * 60 * 60 * 1000;
+
+function safeStringEqual(left, right) {
+  const leftHash = crypto.createHash("sha256").update(String(left || "")).digest();
+  const rightHash = crypto.createHash("sha256").update(String(right || "")).digest();
+  return crypto.timingSafeEqual(leftHash, rightHash);
+}
+
+function createAdminToken(username) {
+  const payload = Buffer.from(JSON.stringify({
+    username,
+    expiresAt: Date.now() + ADMIN_TOKEN_TTL_MS,
+  })).toString("base64url");
+  const signature = crypto.createHmac("sha256", process.env.ADMIN_TOKEN_SECRET).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+}
+
+function isValidAdminToken(token) {
+  if (!token || !process.env.ADMIN_TOKEN_SECRET) return false;
+  const [payload, signature] = String(token).split(".");
+  if (!payload || !signature) return false;
+  const expected = crypto.createHmac("sha256", process.env.ADMIN_TOKEN_SECRET).update(payload).digest("base64url");
+  if (!safeStringEqual(signature, expected)) return false;
+  try {
+    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    return decoded.username === process.env.ADMIN_USERNAME && decoded.expiresAt > Date.now();
+  } catch (e) {
+    return false;
+  }
+}
+
+function requireAdmin(req, res, next) {
+  const authorization = req.headers.authorization || "";
+  const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+  if (!isValidAdminToken(token)) return res.status(401).json({ error: "Admin login required" });
+  next();
+}
+
+app.post("/admin/login", (req, res) => {
+  const username = String(req.body?.username || "");
+  const password = String(req.body?.password || "");
+  const ip = req.ip || req.socket.remoteAddress || "unknown";
+  const attempts = adminLoginAttempts.get(ip) || { count: 0, blockedUntil: 0 };
+  if (attempts.blockedUntil > Date.now()) {
+    return res.status(429).json({ error: "Too many login attempts. Try again later." });
+  }
+  if (!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD || !process.env.ADMIN_TOKEN_SECRET) {
+    return res.status(503).json({ error: "Admin login is not configured on the server." });
+  }
+  if (!safeStringEqual(username, process.env.ADMIN_USERNAME) || !safeStringEqual(password, process.env.ADMIN_PASSWORD)) {
+    attempts.count += 1;
+    if (attempts.count >= 5) {
+      attempts.count = 0;
+      attempts.blockedUntil = Date.now() + 15 * 60 * 1000;
+    }
+    adminLoginAttempts.set(ip, attempts);
+    return res.status(401).json({ error: "Incorrect username or password." });
+  }
+  adminLoginAttempts.delete(ip);
+  return res.json({ token: createAdminToken(username), expiresIn: ADMIN_TOKEN_TTL_MS });
+});
+
+app.get("/admin/session", requireAdmin, (_req, res) => res.json({ authenticated: true }));
 
 const mappingsPath = path.join(__dirname, "mappings.json");
 const offCachePath = path.join(__dirname, "off-cache.json");
@@ -1426,7 +1492,7 @@ app.get("/mappings", (req, res) => {
   return res.json({});
 });
 
-app.post("/mappings", (req, res) => {
+app.post("/mappings", requireAdmin, (req, res) => {
   const { upc, source, data } = req.body || {};
   if (!upc || !data)
     return res.status(400).json({ error: "Missing upc or data" });
@@ -1443,7 +1509,7 @@ app.post("/mappings", (req, res) => {
   return res.json({ ok: true, mapping: mappings[upc] });
 });
 
-app.delete("/mappings", (req, res) => {
+app.delete("/mappings", requireAdmin, (req, res) => {
   const upc = req.query.upc || (req.body && req.body.upc);
   if (!upc) return res.status(400).json({ error: "Missing upc" });
   try {

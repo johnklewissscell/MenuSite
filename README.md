@@ -24,6 +24,11 @@ This workspace provides a small static frontend and a lightweight Node/Express l
 - `POST /mappings` saves a mapping with body `{ upc, data }`.
 - `DELETE /mappings?upc=<UPC>` deletes a mapping.
 
+**Admin overlay login**
+- The Product Manager overlay requires a successful `POST /admin/login` before opening.
+- Set `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and a long random `ADMIN_TOKEN_SECRET` in the Render service environment. Never put these values in frontend files or commit them.
+- Login tokens expire after eight hours. `POST /mappings` and `DELETE /mappings` require the issued bearer token; mapping reads remain public for displaying the product menu.
+
 **Duplicate UPC behavior**
 - The duplicate UPC prompt is defined in `index.html`.
 - The overlay checks both server mappings and `localStorage` before replacing an existing UPC.

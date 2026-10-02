@@ -10,9 +10,14 @@
     const apiDefault = getApiDefault();
     if (apiDefault) urls.unshift(apiDefault + path);
     if (!urls.includes(path)) urls.push(path);
+    const requestOptions = { ...(opts || {}), headers: { ...(opts?.headers || {}) } };
+    const token = sessionStorage.getItem("menu_admin_token");
+    if (token && (path.startsWith("/admin/") || ["POST", "DELETE"].includes(String(requestOptions.method || "GET").toUpperCase()))) {
+      requestOptions.headers.Authorization = `Bearer ${token}`;
+    }
     for (const u of urls) {
       try {
-        const res = await fetch(u, opts);
+        const res = await fetch(u, requestOptions);
         const text = await res.text();
         if (!res.ok) throw new Error("Status " + res.status);
         const trimmed = (text || "").trim();
@@ -36,6 +41,8 @@
     /* Modal */
     #ext-overlay-modal{position:fixed;right:24px;bottom:90px;width:70%;max-width:calc(100% - 48px);background:#ffffff;border-radius:12px;padding:14px;box-shadow:0 18px 60px rgba(2,6,23,0.12);z-index:99999;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;max-height:70vh;overflow:auto}
     #ext-overlay-modal h3{margin:0 0 8px 0;font-size:16px;color:#0f172a}
+    #ext-login-modal{position:fixed;right:24px;bottom:90px;width:min(360px,calc(100% - 48px));background:#fff;border-radius:12px;padding:18px;box-shadow:0 18px 60px rgba(2,6,23,.2);z-index:100001;font-family:Inter,system-ui,sans-serif}
+    #ext-login-modal input{box-sizing:border-box;width:100%;padding:10px;margin:7px 0;border:1px solid #dbe3ec;border-radius:8px}
 
     /* Inputs & layout */
     #ext-overlay-modal input, #ext-overlay-modal button, #ext-overlay-modal select{box-sizing:border-box}
@@ -75,11 +82,23 @@
     btn.title = "Product Manager";
     btn.innerHTML = "+";
     document.body.appendChild(btn);
+    const loginModal = document.createElement("div");
+    loginModal.id = "ext-login-modal";
+    loginModal.style.display = "none";
+    loginModal.innerHTML = `
+      <h3>Admin Login</h3>
+      <form id="ext-login-form">
+        <input id="ext-login-username" name="username" autocomplete="username" placeholder="Username" required />
+        <input id="ext-login-password" name="password" type="password" autocomplete="current-password" placeholder="Password" required />
+        <button class="ext-btn" type="submit">Log in</button>
+        <div id="ext-login-message" role="status" style="margin-top:8px;color:#b91c1c;font-size:13px"></div>
+      </form>`;
+    document.body.appendChild(loginModal);
     const modal = document.createElement("div");
     modal.id = "ext-overlay-modal";
     modal.style.display = "none";
     modal.innerHTML = `
-      <h3>Product Manager</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center"><h3>Product Manager</h3><button id="ext-logout" class="ext-btn secondary" type="button">Log out</button></div>
       <div class="row">
         <input id="ext-upc" placeholder="UPC / Barcode" />
       </div>
@@ -102,6 +121,40 @@
       </div>
     `;
     document.body.appendChild(modal);
+    document.getElementById("ext-login-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const message = document.getElementById("ext-login-message");
+      const submit = event.currentTarget.querySelector('button[type="submit"]');
+      submit.disabled = true;
+      message.textContent = "Checking credentials…";
+      try {
+        const result = await fetchJSONWithFallback("/admin/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: document.getElementById("ext-login-username").value,
+            password: document.getElementById("ext-login-password").value,
+          }),
+        });
+        if (!result?.token) throw new Error("Login failed");
+        sessionStorage.setItem("menu_admin_token", result.token);
+        loginModal.style.display = "none";
+        modal.style.display = "block";
+        localStorage.setItem("ext_modal_open", "1");
+        document.getElementById("ext-login-password").value = "";
+        setTimeout(loadMappings, 80);
+      } catch (error) {
+        message.textContent = "Login failed. Check the username and password, or server configuration.";
+      } finally {
+        submit.disabled = false;
+      }
+    });
+    document.getElementById("ext-logout").addEventListener("click", () => {
+      sessionStorage.removeItem("menu_admin_token");
+      localStorage.removeItem("ext_modal_open");
+      modal.style.display = "none";
+      loginModal.style.display = "none";
+    });
     ensureDuplicatePopup();
     document
       .getElementById("ext-add")
@@ -182,20 +235,30 @@
       const el = document.getElementById(id);
       if (el) el.type = "button";
     });
-    btn.addEventListener("click", () => {
-      const willOpen = modal.style.display !== "block";
-      modal.style.display = willOpen ? "block" : "none";
-      localStorage.setItem("ext_modal_open", willOpen ? "1" : "0");
-      if (willOpen) {
-        setDebug("No debug data");
-        setTimeout(loadMappings, 120);
-      } else {
-        try {
-          localStorage.removeItem("ext_debug");
-          const pre = document.getElementById("ext-debug");
-          if (pre) pre.textContent = "No debug data";
-        } catch (e) {}
+    btn.addEventListener("click", async () => {
+      if (modal.style.display === "block") {
+        modal.style.display = "none";
+        localStorage.removeItem("ext_modal_open");
+        return;
       }
+      const token = sessionStorage.getItem("menu_admin_token");
+      let authenticated = false;
+      if (token) {
+        try {
+          await fetchJSONWithFallback("/admin/session");
+          authenticated = true;
+        } catch (e) {
+          sessionStorage.removeItem("menu_admin_token");
+        }
+      }
+      if (!authenticated) {
+        loginModal.style.display = "block";
+        document.getElementById("ext-login-username").focus();
+        return;
+      }
+      modal.style.display = "block";
+      localStorage.setItem("ext_modal_open", "1");
+      setTimeout(loadMappings, 80);
     });
     try {
       const wasOpen = localStorage.getItem("ext_modal_open");
@@ -204,9 +267,14 @@
         const pre = document.getElementById("ext-debug");
         if (pre) pre.textContent = dbgSaved;
       }
-      if (wasOpen === "1") {
-        modal.style.display = "block";
-        setTimeout(loadMappings, 120);
+      if (wasOpen === "1" && sessionStorage.getItem("menu_admin_token")) {
+        fetchJSONWithFallback("/admin/session").then(() => {
+          modal.style.display = "block";
+          setTimeout(loadMappings, 80);
+        }).catch(() => {
+          sessionStorage.removeItem("menu_admin_token");
+          localStorage.removeItem("ext_modal_open");
+        });
       }
     } catch (e) {}
   }
